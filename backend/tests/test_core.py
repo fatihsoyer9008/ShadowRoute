@@ -413,3 +413,63 @@ def test_sunrise_northbound_sun_on_the_right():
     res = analyze(NS_LINE, rise + timedelta(minutes=25), avg_speed_kmh=20)
     # Kuzeye gidiş + doğu güneşi -> sağdan; öneri SOL.
     assert res.recommended_side is Side.LEFT
+
+
+# ======================================================================
+#  V2 — duraktan durağa (kısmi biniş)
+# ======================================================================
+def test_stops_for_direction_is_monotonic_and_maps_to_polyline():
+    from app.routes_repo import load_routes
+
+    m1 = load_routes()["bursaray-m1"]
+    fwd = m1.stops_for("forward")
+    assert [n for n, _ in fwd] == m1.stops               # düz hat: tüm duraklar
+    idxs = [i for _, i in fwd]
+    assert idxs == sorted(idxs) and idxs[0] == 0
+    # backward: aynı duraklar ters sırayla, indeksler yine artan
+    bwd = m1.stops_for("backward")
+    assert [n for n, _ in bwd] == list(reversed(m1.stops))
+    assert [i for _, i in bwd] == sorted(i for _, i in bwd)
+
+
+def test_partial_ride_is_shorter_and_can_flip_the_verdict():
+    from app.routes_repo import load_routes
+
+    m1 = load_routes()["bursaray-m1"]
+    fwd = m1.stops_for("forward")
+    names = [n for n, _ in fwd]
+    k, g = names.index("Kültürpark"), names.index("Gökdere")
+
+    dep = datetime(2026, 9, 1, 13, 0, tzinfo=TURKEY_TZ)
+    fc, fz = m1.path("forward")
+    full = analyze(fc, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=fz)
+    seg_coords, zones = m1.path("forward", fwd[k][1], fwd[g][1])
+    part = analyze(seg_coords, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=zones)
+
+    assert part.total_length_m < full.total_length_m * 0.4
+    # Kültürpark–Gökdere neredeyse tamamen tünel -> "yok" payı çok yüksek
+    assert part.pct_length(Side.NONE) > 70 > full.pct_length(Side.NONE)
+
+
+def test_loop_route_stops_split_by_leg():
+    from app.routes_repo import load_routes
+
+    r = load_routes()["bus-38"]
+    fwd = r.stops_for("forward")
+    bwd = r.stops_for("backward")
+    assert fwd and bwd
+    # gidiş bacağı duraklarının forward-index'i loop_split içinde kalır
+    fwd_coords, _ = r.path("forward")
+    bwd_coords, _ = r.path("backward")
+    assert all(0 <= i < len(fwd_coords) for _, i in fwd)
+    assert all(0 <= i < len(bwd_coords) for _, i in bwd)
+    # iki bacak dönüş noktasında buluşur (son gidiş ≈ ilk dönüş durağı)
+    assert fwd[-1][0] == bwd[0][0]
+
+
+def test_path_rejects_too_short_stop_range():
+    from app.routes_repo import load_routes
+
+    m1 = load_routes()["bursaray-m1"]
+    with pytest.raises(ValueError):
+        m1.path("forward", 5, 5)

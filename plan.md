@@ -108,10 +108,15 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
       doğrula (algoritma gerçekten tutuyor mu?). Bu adım sahada yapılmalı.
 
 ## 5. V2 Özellikleri
-- **Zaman seçici:** "Yarın 14:00" sorgusu (backend zaten destekliyor).
-- **Nereden nereye:** kullanıcının bindiği kısmı hesaba kat.
-- **Hava durumu:** kapalıysa "hava bulutlu, istediğin yere geç kanka".
-- **Bina gölgeleri:** şehir merkezi için yaklaşık gölge modeli (zor, düşük öncelik).
+- [x] **Nereden nereye (duraktan durağa)** — GeoJSON'a `stop_coords` eklendi,
+      duraklar polyline'a snap ediliyor (`Route.stops_for`), `path()` seçilen
+      aralığa daraltıyor. API: `?from=&to=`. Mobilde "Duraklar" bölümü + "Tüm hat".
+      Örn. M1 Kültürpark→Gökdere: 3.9 km, %83 tünel, "koltuk fark etmez" —
+      tüm hat için "SOL otur" derken.
+- [ ] **Zaman seçici:** "Yarın 14:00" için daha iyi arayüz (backend hazır).
+- [ ] **Hava durumu:** kapalıysa "hava bulutlu, istediğin yere geç kanka".
+- [ ] **Bina gölgeleri:** şehir merkezi için yaklaşık gölge modeli (zor, düşük öncelik).
+- [ ] **Favoriler:** sık hatları kaydet.
 
 ## 6. Bilinçli olarak dışarıda bırakılanlar (V1)
 - Bina/ağaç gölgeleri

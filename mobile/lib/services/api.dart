@@ -46,8 +46,10 @@ class Api {
   }
 
   /// Bir hattın yön/durak detayı (statik ya da `live-<hatNo>`).
-  Future<RouteSummary> routeDetail(String id) async {
-    final data = await _getJson('/routes/$id');
+  /// [direction] verilirse `stops` o yöndeki sıralı durak listesi olur.
+  Future<RouteSummary> routeDetail(String id, {String? direction}) async {
+    final data = await _getJson('/routes/$id',
+        query: direction == null ? null : {'direction': direction});
     if (data is! Map) {
       throw const ApiException('Beklenmeyen sunucu cevabı (hat detayı).');
     }
@@ -58,8 +60,12 @@ class Api {
     String routeId, {
     required String direction,
     DateTime? when,
+    int? fromStop,
+    int? toStop,
   }) async {
     final q = <String, String>{'direction': direction};
+    if (fromStop != null) q['from'] = '$fromStop';
+    if (toStop != null) q['to'] = '$toStop';
     if (when != null) {
       // Backend saat dilimsiz ISO'yu Türkiye saati (+03) kabul ediyor.
       final l = when.toLocal();

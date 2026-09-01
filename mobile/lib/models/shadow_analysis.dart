@@ -52,6 +52,8 @@ class RouteSegment {
 class ShadowAnalysis {
   final String routeName;
   final String directionLabel;
+  final String? fromStop;
+  final String? toStop;
   final DateTime departure;
   final double tripDurationMin;
   final double totalLengthKm;
@@ -69,6 +71,8 @@ class ShadowAnalysis {
   const ShadowAnalysis({
     required this.routeName,
     required this.directionLabel,
+    this.fromStop,
+    this.toStop,
     required this.departure,
     required this.tripDurationMin,
     required this.totalLengthKm,
@@ -89,6 +93,8 @@ class ShadowAnalysis {
     return ShadowAnalysis(
       routeName: (route['name'] as String?) ?? '',
       directionLabel: (route['direction_label'] as String?) ?? '',
+      fromStop: route['from_stop'] as String?,
+      toStop: route['to_stop'] as String?,
       departure:
           DateTime.tryParse(j['departure'] as String? ?? '') ?? DateTime.now(),
       tripDurationMin: (j['trip_duration_min'] as num?)?.toDouble() ?? 0.0,

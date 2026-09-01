@@ -39,8 +39,8 @@ uvicorn app.main:app --reload
 |---|---|
 | `GET /routes` | Elle bakımı yapılan hatlar (tünel bölgeleri ayarlı) |
 | `GET /search?q=38` | Burulaş'ta hat arar → `[{id: "live-<hatNo>", code, name, mode}]` |
-| `GET /routes/{id}` | Hat detayı (yön etiketleri, duraklar) — statik ya da `live-*` |
-| `GET /routes/{id}/shadow?when=ISO&direction=forward\|backward` | Analiz. `when` boşsa Türkiye saatiyle şimdi. |
+| `GET /routes/{id}?direction=forward` | Hat detayı; `direction` verilirse `stops` o yöndeki sıralı liste |
+| `GET /routes/{id}/shadow?when=ISO&direction=&from=&to=` | Analiz. `from`/`to` = o yöndeki durak sırası (0-tabanlı) → duraktan durağa. Boşsa tüm hat. |
 
 `live-<hatNo>` id'leri Burulaş'tan anında çekilir: tünel bölgesi yok, halka
 ise dönüş noktası `auto_loop_split` ile tahmin edilir. Çekilen polyline/durak
@@ -66,7 +66,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 41 test, ağ gerektirmez
+python -m pytest        # 45 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)

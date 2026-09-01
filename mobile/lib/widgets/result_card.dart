@@ -21,6 +21,19 @@ class ResultCard extends StatelessWidget {
           children: [
             Text('${result.routeName} · ${result.directionLabel}',
                 style: t.titleMedium),
+            if (result.fromStop != null && result.toStop != null) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const Icon(Icons.directions_walk, size: 15),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text('${result.fromStop} → ${result.toStop}',
+                        style: t.bodySmall),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 2),
             Text(
               '${_hm(result.departure)} kalkış · ~${result.tripDurationMin.round()} dk · '

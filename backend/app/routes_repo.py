@@ -6,11 +6,11 @@ eklenir; çağıranlar aynı `Route` arayüzünü görmeye devam eder.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import burulas
-from .core.geo import Point, auto_loop_split
+from .core.geo import Point, auto_loop_split, haversine_m
 
 DATA_DIR = Path(__file__).parent / "data"
 ROUTES_DIR = DATA_DIR / "routes"
@@ -42,26 +42,59 @@ class Route:
     tunnel_zones: list[TunnelZone]   # coğrafi; yöne bağlı değil
     coords: list[Point]             # (lat, lon), forward yön
     stops: list[str]
+    stop_points: list[Point] = field(default_factory=list)  # `stops` ile paralel
     loop_split: int | None = None   # kapalı halka hatlarda dönüş noktasının indeksi
     hat_no: int | None = None       # Burulaş hatNo (varsa) — canlı fallback için
 
-    def path(self, direction: str) -> tuple[list[Point], list[TunnelZone]]:
-        """direction: 'forward' | 'backward'.
-
-        Düz hat: backward = koordinatların tersi.
-        Halka hat (`loop_split` dolu): forward = başlangıç→dönüş noktası,
-        backward = dönüş noktası→başlangıç (halka zaten geri döndüğü için
-        ters çevrilmez). Tünel bölgeleri coğrafi, yönden bağımsız."""
-        if direction not in ("forward", "backward"):
-            raise ValueError("direction 'forward' ya da 'backward' olmalı")
-
+    def _dir_coords(self, direction: str) -> list[Point]:
         if self.loop_split is not None:
             s = self.loop_split
-            coords = self.coords[: s + 1] if direction == "forward" else self.coords[s:]
-        elif direction == "forward":
-            coords = self.coords
-        else:
-            coords = list(reversed(self.coords))
+            return self.coords[: s + 1] if direction == "forward" else self.coords[s:]
+        return self.coords if direction == "forward" else list(reversed(self.coords))
+
+    def stops_for(self, direction: str) -> list[tuple[str, int]]:
+        """O yöndeki duraklar: (isim, o yönün coords listesindeki en yakın indeks).
+        Sıralı. stop_points yoksa boş liste."""
+        if not self.stop_points:
+            return []
+        dc = self._dir_coords(direction)
+        n = len(self.coords)
+
+        def to_dir_index(fwd_i: int) -> int | None:
+            if self.loop_split is None:
+                return fwd_i if direction == "forward" else (n - 1 - fwd_i)
+            s = self.loop_split
+            if direction == "forward":
+                return fwd_i if fwd_i <= s else None
+            return (fwd_i - s) if fwd_i >= s else None
+
+        out: list[tuple[str, int]] = []
+        for name, p in zip(self.stops, self.stop_points):
+            fwd_i = min(range(n), key=lambda i: haversine_m(self.coords[i], p))
+            di = to_dir_index(fwd_i)
+            if di is not None and 0 <= di < len(dc):
+                out.append((name, di))
+        out.sort(key=lambda t: t[1])
+        return out
+
+    def path(
+        self, direction: str, start_i: int | None = None, end_i: int | None = None
+    ) -> tuple[list[Point], list[TunnelZone]]:
+        """direction: 'forward' | 'backward'. start_i/end_i verilirse o yönün
+        coords listesi bu indeksler arasına daraltılır (duraktan durağa).
+
+        Düz hat: backward = koordinatların tersi. Halka hat (`loop_split`):
+        forward = başlangıç→dönüş, backward = dönüş→başlangıç. Tünel bölgeleri
+        coğrafi, yönden bağımsız."""
+        if direction not in ("forward", "backward"):
+            raise ValueError("direction 'forward' ya da 'backward' olmalı")
+        coords = self._dir_coords(direction)
+        if start_i is not None or end_i is not None:
+            a = max(0, start_i or 0)
+            b = min(len(coords), (end_i if end_i is not None else len(coords) - 1) + 1)
+            if b - a < 2:
+                raise ValueError("Seçilen durak aralığı çok kısa")
+            coords = coords[a:b]
         return coords, self.tunnel_zones
 
 
@@ -88,6 +121,7 @@ def _load_one(fp: Path, shared_zones: dict[str, list[TunnelZone]]) -> Route:
         tunnel_zones=zones,
         coords=coords,
         stops=props.get("stops", []),
+        stop_points=[(lat, lon) for lon, lat in props.get("stop_coords", [])],
         loop_split=props.get("loop_split"),
         hat_no=props.get("hat_no"),
     )
@@ -128,7 +162,9 @@ def live_route(hat_no: int) -> Route:
 
     paths = burulas.directional_paths(hat_no)
     coords = paths["forward"]
-    stops = burulas.stop_names(hat_no)
+    stop_rows = burulas.stops_with_coords(hat_no)
+    stops = [n for n, _ in stop_rows]
+    stop_points = [p for _, p in stop_rows]
 
     split = auto_loop_split(coords)
     if not stops:
@@ -151,6 +187,7 @@ def live_route(hat_no: int) -> Route:
         tunnel_zones=[],
         coords=coords,
         stops=stops,
+        stop_points=stop_points,
         loop_split=split,
     )
 

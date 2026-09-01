@@ -173,15 +173,26 @@ def find_route(code: str) -> dict:
     return exact[0] if exact else hits[0]
 
 
-def stop_names(route_code: int | str, direction: str = "G") -> list[str]:
+def stops_with_coords(
+    route_code: int | str, direction: str = "G"
+) -> list[tuple[str, Point]]:
+    """[(durak adı, (lat, lon)), ...] sıralı. Bitişik birebir tekrarlar atılır."""
     rows = [s for s in route_stops(route_code) if s.get("direction") in (direction, "R")]
     rows.sort(key=lambda s: int(s["sequence"]))
-    seen: list[str] = []
+    out: list[tuple[str, Point]] = []
     for s in rows:
         nm = str(s.get("stopName", "")).strip()
-        if nm and (not seen or seen[-1] != nm):
-            seen.append(nm)
-    return seen
+        try:
+            p = (float(s["latitude"]), float(s["longitude"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if nm and (not out or out[-1][0] != nm):
+            out.append((nm, p))
+    return out
+
+
+def stop_names(route_code: int | str, direction: str = "G") -> list[str]:
+    return [n for n, _ in stops_with_coords(route_code, direction)]
 
 
 def _coord(p: dict) -> Point:

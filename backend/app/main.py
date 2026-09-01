@@ -41,8 +41,8 @@ def _resolve(route_id: str) -> Route:
     raise HTTPException(404, f"Bilinmeyen rota: {route_id}")
 
 
-def _summary(r: Route) -> dict:
-    return {
+def _summary(r: Route, direction: str | None = None) -> dict:
+    out = {
         "id": r.id,
         "name": r.name,
         "mode": r.mode,
@@ -50,6 +50,12 @@ def _summary(r: Route) -> dict:
         "is_loop": r.loop_split is not None,
         "stops": r.stops,
     }
+    if direction is not None:
+        # Duraktan durağa seçim için: o yöndeki sıralı durak adları.
+        dir_stops = [name for name, _ in r.stops_for(direction)]
+        out["stops"] = dir_stops or r.stops
+        out["has_stops"] = bool(dir_stops)
+    return out
 
 
 @app.get("/routes")
@@ -85,8 +91,13 @@ def search_lines(q: str = Query(..., min_length=1, description="Hat kodu ya da a
 
 
 @app.get("/routes/{route_id}")
-def route_detail(route_id: str):
-    return _summary(_resolve(route_id))
+def route_detail(
+    route_id: str,
+    direction: str | None = Query(None, pattern="^(forward|backward)$"),
+):
+    """direction verilirse `stops` o yöndeki sıralı durak listesi olur
+    (duraktan durağa seçim için)."""
+    return _summary(_resolve(route_id), direction)
 
 
 @app.get("/routes/{route_id}/shadow")
@@ -96,6 +107,12 @@ def route_shadow(
     when: datetime | None = Query(
         None, description="ISO 8601 kalkış zamanı. Boşsa: Türkiye saatiyle şimdi."
     ),
+    from_stop: int | None = Query(
+        None, alias="from", ge=0, description="Biniş durağı sırası (o yöndeki listede, 0-tabanlı)"
+    ),
+    to_stop: int | None = Query(
+        None, alias="to", ge=0, description="İniş durağı sırası"
+    ),
 ):
     route = _resolve(route_id)
 
@@ -103,7 +120,22 @@ def route_shadow(
     if departure.tzinfo is None:
         departure = departure.replace(tzinfo=TURKEY_TZ)
 
-    coords, tunnel_zones = route.path(direction)
+    dir_stops = route.stops_for(direction)
+    start_i = end_i = None
+    from_name = to_name = None
+    if (from_stop is not None or to_stop is not None) and dir_stops:
+        lo = from_stop or 0
+        hi = to_stop if to_stop is not None else len(dir_stops) - 1
+        if lo >= hi or hi >= len(dir_stops):
+            raise HTTPException(400, "Geçersiz durak aralığı (biniş < iniş olmalı)")
+        start_i, end_i = dir_stops[lo][1], dir_stops[hi][1]
+        from_name, to_name = dir_stops[lo][0], dir_stops[hi][0]
+
+    try:
+        coords, tunnel_zones = route.path(direction, start_i, end_i)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
     result = analyze(
         coords,
         departure,
@@ -120,5 +152,7 @@ def route_shadow(
         "curated": route.id in STATIC_ROUTES,
         "direction": direction,
         "direction_label": route.direction_labels.get(direction, direction),
+        "from_stop": from_name,
+        "to_stop": to_name,
     }
     return payload

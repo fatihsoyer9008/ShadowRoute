@@ -25,6 +25,11 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _when; // null => şimdi
   Future<ShadowAnalysis>? _resultFuture;
 
+  // Duraktan durağa
+  List<String> _stops = const [];
+  int _fromIdx = 0;
+  int _toIdx = 0; // < 2 durak varsa kullanılmaz
+
   @override
   void initState() {
     super.initState();
@@ -89,7 +94,35 @@ class _HomeScreenState extends State<HomeScreen> {
               ? 'forward'
               : r.directions.keys.first;
       _resultFuture = null;
+      _stops = const [];
     });
+    _loadStops();
+  }
+
+  void _changeDirection(String dir) {
+    setState(() {
+      _direction = dir;
+      _resultFuture = null;
+      _stops = const [];
+    });
+    _loadStops();
+  }
+
+  Future<void> _loadStops() async {
+    final r = _selected;
+    if (r == null) return;
+    try {
+      final detail = await _api.routeDetail(r.id, direction: _direction);
+      if (!mounted || _selected?.id != r.id) return;
+      setState(() {
+        _stops = detail.stops;
+        _fromIdx = 0;
+        _toIdx = _stops.length - 1;
+      });
+    } catch (_) {
+      // Durak listesi alınamazsa tüm hat üzerinden hesaplanır (from/to boş).
+      if (mounted) setState(() => _stops = const []);
+    }
   }
 
   Future<void> _pickTime() async {
@@ -117,9 +150,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void _calculate() {
     final route = _selected;
     if (route == null) return;
+    final wholeLine =
+        _stops.length < 2 || (_fromIdx == 0 && _toIdx == _stops.length - 1);
     setState(() {
-      _resultFuture =
-          _api.shadow(route.id, direction: _direction, when: _when);
+      _resultFuture = _api.shadow(
+        route.id,
+        direction: _direction,
+        when: _when,
+        fromStop: wholeLine ? null : _fromIdx,
+        toStop: wholeLine ? null : _toIdx,
+      );
     });
   }
 
@@ -152,11 +192,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ButtonSegment(value: e.key, label: Text(e.value)),
               ],
               selected: {_direction},
-              onSelectionChanged: (s) => setState(() {
-                _direction = s.first;
-                _resultFuture = null;
-              }),
+              onSelectionChanged: (s) => _changeDirection(s.first),
             ),
+            if (_stops.length >= 2) ...[
+              const SizedBox(height: 20),
+              Text('Duraklar', style: t.labelLarge),
+              const SizedBox(height: 8),
+              _StopPicker(
+                stops: _stops,
+                fromIdx: _fromIdx,
+                toIdx: _toIdx,
+                onChanged: (from, to) => setState(() {
+                  _fromIdx = from;
+                  _toIdx = to;
+                  _resultFuture = null;
+                }),
+              ),
+            ],
             const SizedBox(height: 20),
             Text('Ne zaman', style: t.labelLarge),
             const SizedBox(height: 8),
@@ -199,6 +251,68 @@ class _HomeScreenState extends State<HomeScreen> {
     final hm = '${d.hour.toString().padLeft(2, '0')}:'
         '${d.minute.toString().padLeft(2, '0')}';
     return sameDay ? 'Bugün $hm' : '${d.day}.${d.month} $hm';
+  }
+}
+
+class _StopPicker extends StatelessWidget {
+  const _StopPicker({
+    required this.stops,
+    required this.fromIdx,
+    required this.toIdx,
+    required this.onChanged,
+  });
+
+  final List<String> stops;
+  final int fromIdx;
+  final int toIdx;
+  final void Function(int from, int to) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final wholeLine = fromIdx == 0 && toIdx == stops.length - 1;
+    return Column(
+      children: [
+        _dropdown(context, 'Nereden', fromIdx, (v) {
+          onChanged(v, v >= toIdx ? (v + 1).clamp(0, stops.length - 1) : toIdx);
+        }),
+        const SizedBox(height: 8),
+        _dropdown(context, 'Nereye', toIdx, (v) {
+          onChanged(v <= fromIdx ? (v - 1).clamp(0, stops.length - 1) : fromIdx, v);
+        }),
+        if (!wholeLine)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => onChanged(0, stops.length - 1),
+              child: const Text('Tüm hat'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _dropdown(
+      BuildContext context, String label, int value, ValueChanged<int> onSel) {
+    return DropdownButtonFormField<int>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      items: [
+        for (var i = 0; i < stops.length; i++)
+          DropdownMenuItem(
+            value: i,
+            child: Text('${i + 1}. ${stops[i]}',
+                overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (v) {
+        if (v != null) onSel(v);
+      },
+    );
   }
 }
 
