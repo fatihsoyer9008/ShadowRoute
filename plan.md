@@ -116,8 +116,10 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] **Yön seçimi kaldırıldı** — biniş/iniş durağı zaten yönü belirtiyordu;
       ayrı "Yön" adımı gereksizdi. Düz hatta `from > to` = ters yön, halka
       hatta turu tamamlar.
-- [ ] **Zaman seçici:** "Yarın 14:00" için daha iyi arayüz (backend hazır).
-- [ ] **Hava durumu:** kapalıysa "hava bulutlu, istediğin yere geç kanka".
+- [x] **Hava durumu** — OpenWeather, rota orta noktası koordinatıyla anlık
+      bulutluluk. Öneriyi ezmez, esnek not düşer ("güneş açarsa sağ taraf
+      riskli"). `OPENWEATHER_API_KEY` yoksa sessizce kapalı. Sadece ±3 saat.
+- [ ] **Zaman seçici:** "Yarın 14:00" için daha iyi arayüz + o saate hava tahmini.
 - [ ] **Bina gölgeleri:** şehir merkezi için yaklaşık gölge modeli (zor, düşük öncelik).
 - [ ] **Favoriler:** sık hatları kaydet.
 

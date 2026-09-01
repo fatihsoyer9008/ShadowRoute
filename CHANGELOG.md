@@ -1,5 +1,13 @@
 # Değişiklik günlüğü
 
+## v0.1.2 — 2026-09-01
+
+- **Hava durumu bağlamı.** Analiz edilen rota parçasının orta noktası için
+  anlık bulutluluk (OpenWeather, koordinat bazlı — şehir adı değil). Öneriyi
+  değiştirmez, altına esnek bir not düşer: kapalıysa "güneş açarsa sağ taraf
+  riskli", açıksa "öneri büyük ihtimalle geçerli". Sadece yakın saatlerde.
+  Sunucuda anahtar yoksa özellik sessizce kapalı.
+
 ## v0.1.1 — 2026-09-01
 
 - **Yön seçimi kaldırıldı.** Artık sadece biniş ve iniş durağını seçiyorsun;
