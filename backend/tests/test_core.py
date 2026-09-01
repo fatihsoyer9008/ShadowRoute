@@ -490,3 +490,49 @@ def test_loop_slice_wraps_past_the_start():
     # dönüş bacağındaki bir duraktan gidiş bacağındaki bir durağa: tur tamamlanır
     seg, _ = r.slice_between(n - 3, 2)
     assert len(seg) >= 2
+
+
+# --- hava durumu bağlamı (OpenWeather opsiyonel) ----------------------
+def test_weather_disabled_without_key(monkeypatch):
+    from app import weather
+
+    monkeypatch.setattr(weather, "_KEY", "")
+    assert not weather.enabled()
+    assert weather.current(40.19, 29.06) is None
+
+
+def test_weather_note_is_context_not_override(monkeypatch):
+    from datetime import datetime as _dt
+
+    import app.main as m
+    from app.core.sun import TURKEY_TZ
+    from app.routes_repo import load_routes
+
+    r = load_routes()["bursaray-m1"]
+    dep = _dt(2026, 9, 1, 8, 0, tzinfo=TURKEY_TZ)
+    res = analyze(r.coords, dep, avg_speed_kmh=r.avg_speed_kmh,
+                  tunnel_zones=r.tunnel_zones)
+
+    monkeypatch.setattr(m.weather, "enabled", lambda: True)
+    monkeypatch.setattr(m.weather, "current",
+                        lambda lat, lon: {"clouds_pct": 80, "condition": "Clouds",
+                                          "description": "kapalı", "temp_c": 22})
+    monkeypatch.setattr(m, "datetime", _FrozenNow(dep))
+
+    w = m._weather_for(r.coords, dep, res)
+    assert w["clouds_pct"] == 80
+    assert "bulutlu" in w["note"].lower()
+    # öneri (recommended_side) hava durumundan bağımsız — analyze zaten hesapladı
+    assert res.recommended_side in (Side.LEFT, Side.RIGHT, Side.NONE)
+
+
+class _FrozenNow:
+    def __init__(self, now):
+        self._now = now
+
+    def now(self, tz=None):
+        return self._now
+
+    def __getattr__(self, k):
+        from datetime import datetime as _dt
+        return getattr(_dt, k)

@@ -66,7 +66,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 47 test, ağ gerektirmez
+python -m pytest        # 49 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)

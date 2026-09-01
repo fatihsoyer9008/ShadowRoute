@@ -48,11 +48,34 @@ class RouteSegment {
       );
 }
 
+/// Rota orta noktası için anlık hava (opsiyonel — sunucuda OpenWeather anahtarı varsa).
+class Weather {
+  final int cloudsPct;
+  final String description;
+  final int tempC;
+  final String? note; // esnek uyarı metni
+
+  const Weather({
+    required this.cloudsPct,
+    required this.description,
+    required this.tempC,
+    this.note,
+  });
+
+  factory Weather.fromJson(Map<String, dynamic> j) => Weather(
+        cloudsPct: (j['clouds_pct'] as num?)?.toInt() ?? 0,
+        description: (j['description'] as String?) ?? '',
+        tempC: (j['temp_c'] as num?)?.toInt() ?? 0,
+        note: j['note'] as String?,
+      );
+}
+
 /// Backend `GET /routes/{id}/shadow` çıktısı.
 class ShadowAnalysis {
   final String routeName;
   final String? fromStop;
   final String? toStop;
+  final Weather? weather;
   final DateTime departure;
   final double tripDurationMin;
   final double totalLengthKm;
@@ -71,6 +94,7 @@ class ShadowAnalysis {
     required this.routeName,
     this.fromStop,
     this.toStop,
+    this.weather,
     required this.departure,
     required this.tripDurationMin,
     required this.totalLengthKm,
@@ -88,10 +112,12 @@ class ShadowAnalysis {
         const {};
     double pct(String k) => (bd[k] as num?)?.toDouble() ?? 0.0;
 
+    final wx = (j['weather'] as Map?)?.cast<String, dynamic>();
     return ShadowAnalysis(
       routeName: (route['name'] as String?) ?? '',
       fromStop: route['from_stop'] as String?,
       toStop: route['to_stop'] as String?,
+      weather: wx == null ? null : Weather.fromJson(wx),
       departure:
           DateTime.tryParse(j['departure'] as String? ?? '') ?? DateTime.now(),
       tripDurationMin: (j['trip_duration_min'] as num?)?.toDouble() ?? 0.0,

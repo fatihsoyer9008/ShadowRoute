@@ -10,8 +10,8 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import burulas
-from .core.shadow import analyze
+from . import burulas, weather
+from .core.shadow import RouteShadow, Side, analyze
 from .core.sun import TURKEY_TZ
 from .routes_repo import LIVE_PREFIX, Route, live_route, load_routes
 
@@ -89,6 +89,44 @@ def search_lines(q: str = Query(..., min_length=1, description="Hat kodu ya da a
     ]
 
 
+def _weather_for(coords, departure: datetime, result: RouteShadow) -> dict | None:
+    """Rota orta noktası için anlık bulutluluk + esnek uyarı.
+    Yalnız 'şimdi'ye yakın yolculuklarda (±3 sa) — anlık hava geleceği anlatmaz.
+    OpenWeather anahtarı yoksa None."""
+    if not weather.enabled():
+        return None
+    if abs((departure - datetime.now(TURKEY_TZ)).total_seconds()) > 3 * 3600:
+        return None
+
+    mid = coords[len(coords) // 2]
+    w = weather.current(mid[0], mid[1])
+    if w is None:
+        return None
+
+    c = w["clouds_pct"]
+    side = result.recommended_side
+    note = None
+    if c >= 65:
+        if side in (Side.LEFT, Side.RIGHT):
+            risky = "sağ" if side is Side.LEFT else "sol"
+            worse_pct = round(max(result.pct_length(Side.LEFT),
+                                  result.pct_length(Side.RIGHT)))
+            note = (f"Bölgede hava şu an %{c} bulutlu. Yine de güneş açarsa "
+                    f"yolculuğun ~%{worse_pct}'inde {risky} taraf riskli.")
+        else:
+            note = f"Bölgede hava %{c} bulutlu — güneş zaten koltuk farkı yaratmıyor."
+    elif c <= 25:
+        note = f"Hava açık (%{c} bulut) — öneri büyük ihtimalle geçerli."
+
+    return {
+        "clouds_pct": c,
+        "condition": w["condition"],
+        "description": w["description"],
+        "temp_c": w["temp_c"],
+        "note": note,
+    }
+
+
 @app.get("/routes/{route_id}")
 def route_detail(route_id: str):
     return _summary(_resolve(route_id))
@@ -136,6 +174,9 @@ def route_shadow(
     )
 
     payload = result.to_dict()
+    w = _weather_for(coords, departure, result)
+    if w is not None:
+        payload["weather"] = w
     payload["route"] = {
         "id": route.id,
         "name": route.name,

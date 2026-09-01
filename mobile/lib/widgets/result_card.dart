@@ -59,6 +59,10 @@ class ResultCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (result.weather?.note != null) ...[
+              const SizedBox(height: 10),
+              _WeatherNote(weather: result.weather!),
+            ],
             const SizedBox(height: 16),
             _Breakdown(breakdown: result.breakdownPct),
             if (result.segments.length >= 2) ...[
@@ -87,6 +91,37 @@ class ResultCard extends StatelessWidget {
 
   static String _hm(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+}
+
+class _WeatherNote extends StatelessWidget {
+  const _WeatherNote({required this.weather});
+
+  final Weather weather;
+
+  @override
+  Widget build(BuildContext context) {
+    final overcast = weather.cloudsPct >= 65;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(overcast ? Icons.cloud : Icons.wb_sunny_outlined,
+              size: 18, color: Theme.of(context).hintColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(weather.note!,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Breakdown extends StatelessWidget {
