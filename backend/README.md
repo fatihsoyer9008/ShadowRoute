@@ -23,7 +23,7 @@ Sunucu:  `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 ```bash
 python -m scripts.poc                              # tüm rotalar, "şimdi"
 python -m scripts.poc bursaray-m1 2026-09-01T18:15
-python -m scripts.poc bus-38 2026-06-21T08:00 backward
+python -m scripts.poc bursaray-m1 2026-09-01T18:15 10:15   # 11.->16. durak arası
 ```
 
 Çıktı: her segment için gidiş yönü, o andaki güneş azimut/yükseklik değeri,
@@ -39,8 +39,8 @@ uvicorn app.main:app --reload
 |---|---|
 | `GET /routes` | Elle bakımı yapılan hatlar (tünel bölgeleri ayarlı) |
 | `GET /search?q=38` | Burulaş'ta hat arar → `[{id: "live-<hatNo>", code, name, mode}]` |
-| `GET /routes/{id}?direction=forward` | Hat detayı; `direction` verilirse `stops` o yöndeki sıralı liste |
-| `GET /routes/{id}/shadow?when=ISO&direction=&from=&to=` | Analiz. `from`/`to` = o yöndeki durak sırası (0-tabanlı) → duraktan durağa. Boşsa tüm hat. |
+| `GET /routes/{id}` | Hat detayı: `stops` (yolculuk sırasıyla), `default_from`/`default_to`, `is_loop` |
+| `GET /routes/{id}/shadow?when=ISO&from=&to=` | Analiz. `from`/`to` = durak sırası (0-tabanlı). **Yön yok** — biniş/iniş sırası yönü belirler. Boşsa varsayılan aralık. |
 
 `live-<hatNo>` id'leri Burulaş'tan anında çekilir: tünel bölgesi yok, halka
 ise dönüş noktası `auto_loop_split` ile tahmin edilir. Çekilen polyline/durak
@@ -66,7 +66,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 45 test, ağ gerektirmez
+python -m pytest        # 47 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
@@ -79,7 +79,7 @@ app/
     shadow.py   ÇEKIRDEK: analyze() -> RouteShadow
   data/routes/  statik GeoJSON hatlar (MVP'de DB yok)
   data/tunnel_zones.json  M1/M2 ortak yeraltı bölgeleri (tunnel_zone_refs ile bağlanır)
-  routes_repo.py GeoJSON yükleyici + ortak tünel çözümleme + gidiş/dönüş
+  routes_repo.py GeoJSON yükleyici + ortak tünel + duraktan durağa dilimleme
   burulas.py    Burulaş API istemcisi
   main.py       FastAPI kabuğu
 scripts/poc.py        terminal demo (statik hatlar)
@@ -90,10 +90,14 @@ Bir rota hem kendi `tunnel_zones` dizisini hem de `tunnel_zone_refs`
 (örn. `["bursaray-acemler", "bursaray-merkez"]`) ile ortak bölgeleri
 kullanabilir; `routes_repo` ikisini birleştirir.
 
-**Kapalı halka hatlar** (ör. 38 — Terminal ↔ Heykel): GeoJSON'da `loop_split`
-= dönüş noktasının koordinat indeksi. `path("forward")` = başlangıç→dönüş,
-`path("backward")` = dönüş→başlangıç (halka zaten geri döndüğü için ters
-çevrilmez). Bölünmezse tek yönlü halka ~%50/50 sonuç verirdi.
+**Yön seçimi yok.** Kullanıcı biniş + iniş durağını seçer; yön bu sıradan
+çıkar (`Route.canonical_stops()` + `slice_between(from_i, to_i)`). Düz hatta
+`from > to` → ters yön; halka hatta turu tamamlar.
+
+**Kapalı halka hatlar** (ör. 38 — Terminal / Heykel): GeoJSON'da `loop_split`
+= dönüş noktasının koordinat indeksi. Halkada `canonical_stops` bütün turu
+verir; `default_span()` başlangıç→dönüş noktası (ilk yarım tur) döner —
+bölünmezse tek yönlü halka ~%50/50 çıkardı.
 
 ## Algoritma özeti
 
@@ -126,7 +130,6 @@ kullanabilir; `routes_repo` ikisini birleştirir.
 
 - Bina/ağaç gölgeleri modellenmez (şehir içinde gerçek etkiyi azaltır).
 - Cam rengi / araç tipi hesaba katılmaz.
-- Yolcunun tüm hattı bindiği varsayılır ("nereden nereye" V2).
 - Tüm hatlar **gerçek Burulaş verisi**: `bursaray-m1` (1531), `bursaray-m2`
   (1519), `bus-38` (1012), `bus-4g` (1121). Yeraltı bölgeleri tr.wikipedia
   istasyon listesinden. 38 ve 4G kapalı halka → `loop_split`.

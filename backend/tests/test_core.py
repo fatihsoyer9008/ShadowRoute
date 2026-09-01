@@ -162,24 +162,24 @@ def test_bursaray_tunnel_zones(route_id, band):
     dep = datetime(2026, 6, 21, 13, 0, tzinfo=TURKEY_TZ)  # tepe güneş
     lo, hi = band
 
-    for direction in ("forward", "backward"):
-        coords, zones = route.path(direction)
-        res = analyze(coords, dep, avg_speed_kmh=route.avg_speed_kmh, tunnel_zones=zones)
+    for coords in (route.coords, list(reversed(route.coords))):
+        res = analyze(coords, dep, avg_speed_kmh=route.avg_speed_kmh,
+                      tunnel_zones=route.tunnel_zones)
 
-        assert lo <= res.pct_length(Side.NONE) / 100 <= hi, (route_id, direction)
+        assert lo <= res.pct_length(Side.NONE) / 100 <= hi, route_id
 
         # Merinos–Demirtaşpaşa ortak çekirdek tüneli boyunca güneş etkisi sıfır.
         core = [
             s for s in res.segments
             if 40.186 <= s.mid[0] <= 40.199 and 29.051 <= s.mid[1] <= 29.068
         ]
-        assert core, (route_id, direction)
-        assert all(s.side is Side.NONE and s.in_tunnel for s in core), (route_id, direction)
+        assert core, route_id
+        assert all(s.side is Side.NONE and s.in_tunnel for s in core), route_id
 
         # Kültürpark (hemzemin) civarı tünel sayılmamalı.
         kulturpark = [s for s in res.segments
                       if haversine_m(s.mid, (40.20033, 29.0407)) < 150]
-        assert kulturpark and not any(s.in_tunnel for s in kulturpark), (route_id, direction)
+        assert kulturpark and not any(s.in_tunnel for s in kulturpark), route_id
 
 
 def test_m1_m2_share_the_central_tunnel_zones():
@@ -202,19 +202,19 @@ def test_analyze_all_night_is_no_preference():
 
 # --- kapalı halka hatlar (38, 4G) -------------------------------------
 @pytest.mark.parametrize("route_id", ["bus-38", "bus-4g"])
-def test_loop_route_splits_into_two_legs(route_id):
+def test_loop_route_default_span_is_first_half(route_id):
     from app.routes_repo import load_routes
 
     r = load_routes()[route_id]
-    assert r.loop_split is not None
+    assert r.is_loop
+    stops = r.canonical_stops()
+    lo, hi = r.default_span()
+    # Varsayılan: başlangıç → dönüş noktası (tam tur değil, ilk yarım).
+    assert lo == 0 and 0 < hi < len(stops) - 1
+    assert abs(stops[hi][1] - r.loop_split) < len(r.coords) * 0.15
 
-    fwd, _ = r.path("forward")
-    bwd, _ = r.path("backward")
-
-    # İki bacak ayrı yollar (biri diğerinin tersi DEĞİL), dönüş noktasında birleşiyor.
-    assert fwd[-1] == bwd[0]
-    assert fwd != list(reversed(bwd))
-    assert len(fwd) + len(bwd) == len(r.coords) + 1
+    seg, _ = r.slice_between(lo, hi)
+    assert 2 <= len(seg) < len(r.coords)
 
 
 def test_auto_loop_split():
@@ -242,9 +242,14 @@ def test_bus38_legs_face_opposite_sun_sides():
     from app.routes_repo import load_routes
 
     r = load_routes()["bus-38"]
+    stops = r.canonical_stops()
+    turn = min(range(len(stops)), key=lambda k: abs(stops[k][1] - r.loop_split))
     dep = datetime(2026, 6, 21, 8, 0, tzinfo=TURKEY_TZ)  # sabah, güneş doğuda
-    f = analyze(r.path("forward")[0], dep, avg_speed_kmh=r.avg_speed_kmh)
-    b = analyze(r.path("backward")[0], dep, avg_speed_kmh=r.avg_speed_kmh)
+
+    out, _ = r.slice_between(0, turn)                 # gidiş bacağı (güneye)
+    back, _ = r.slice_between(turn, len(stops) - 1)   # dönüş bacağı (kuzeye)
+    f = analyze(out, dep, avg_speed_kmh=r.avg_speed_kmh)
+    b = analyze(back, dep, avg_speed_kmh=r.avg_speed_kmh)
     # Kuzey-güney hat: bir bacak sola, diğeri sağa oturt demeli.
     assert {f.recommended_side, b.recommended_side} == {Side.LEFT, Side.RIGHT}
 
@@ -416,34 +421,42 @@ def test_sunrise_northbound_sun_on_the_right():
 
 
 # ======================================================================
-#  V2 — duraktan durağa (kısmi biniş)
+#  Duraktan durağa (yön seçimi yok — yön durak sırasından çıkar)
 # ======================================================================
-def test_stops_for_direction_is_monotonic_and_maps_to_polyline():
+def test_canonical_stops_monotonic_and_maps_to_polyline():
     from app.routes_repo import load_routes
 
     m1 = load_routes()["bursaray-m1"]
-    fwd = m1.stops_for("forward")
-    assert [n for n, _ in fwd] == m1.stops               # düz hat: tüm duraklar
-    idxs = [i for _, i in fwd]
+    stops = m1.canonical_stops()
+    assert [n for n, _ in stops] == m1.stops               # düz hat: gidiş sırası
+    idxs = [i for _, i in stops]
     assert idxs == sorted(idxs) and idxs[0] == 0
-    # backward: aynı duraklar ters sırayla, indeksler yine artan
-    bwd = m1.stops_for("backward")
-    assert [n for n, _ in bwd] == list(reversed(m1.stops))
-    assert [i for _, i in bwd] == sorted(i for _, i in bwd)
+
+
+def test_stop_order_gives_direction_without_a_direction_flag():
+    from app.routes_repo import load_routes
+
+    m1 = load_routes()["bursaray-m1"]
+    names = [n for n, _ in m1.canonical_stops()]
+    k, g = names.index("Kültürpark"), names.index("Gökdere")
+
+    fwd, _ = m1.slice_between(k, g)    # Kültürpark -> Gökdere
+    bwd, _ = m1.slice_between(g, k)    # Gökdere -> Kültürpark (aynı hat, ters)
+    assert fwd == list(reversed(bwd))
+    assert len(fwd) >= 2
 
 
 def test_partial_ride_is_shorter_and_can_flip_the_verdict():
     from app.routes_repo import load_routes
 
     m1 = load_routes()["bursaray-m1"]
-    fwd = m1.stops_for("forward")
-    names = [n for n, _ in fwd]
+    names = [n for n, _ in m1.canonical_stops()]
     k, g = names.index("Kültürpark"), names.index("Gökdere")
 
     dep = datetime(2026, 9, 1, 13, 0, tzinfo=TURKEY_TZ)
-    fc, fz = m1.path("forward")
-    full = analyze(fc, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=fz)
-    seg_coords, zones = m1.path("forward", fwd[k][1], fwd[g][1])
+    full = analyze(m1.coords, dep, avg_speed_kmh=m1.avg_speed_kmh,
+                   tunnel_zones=m1.tunnel_zones)
+    seg_coords, zones = m1.slice_between(k, g)
     part = analyze(seg_coords, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=zones)
 
     assert part.total_length_m < full.total_length_m * 0.4
@@ -451,25 +464,29 @@ def test_partial_ride_is_shorter_and_can_flip_the_verdict():
     assert part.pct_length(Side.NONE) > 70 > full.pct_length(Side.NONE)
 
 
-def test_loop_route_stops_split_by_leg():
+def test_loop_canonical_stops_cover_the_whole_loop_in_order():
     from app.routes_repo import load_routes
 
     r = load_routes()["bus-38"]
-    fwd = r.stops_for("forward")
-    bwd = r.stops_for("backward")
-    assert fwd and bwd
-    # gidiş bacağı duraklarının forward-index'i loop_split içinde kalır
-    fwd_coords, _ = r.path("forward")
-    bwd_coords, _ = r.path("backward")
-    assert all(0 <= i < len(fwd_coords) for _, i in fwd)
-    assert all(0 <= i < len(bwd_coords) for _, i in bwd)
-    # iki bacak dönüş noktasında buluşur (son gidiş ≈ ilk dönüş durağı)
-    assert fwd[-1][0] == bwd[0][0]
+    stops = r.canonical_stops()
+    idxs = [i for _, i in stops]
+    assert idxs == sorted(idxs)
+    assert idxs[0] < r.loop_split < idxs[-1]   # tur, dönüş noktasını içeriyor
 
 
-def test_path_rejects_too_short_stop_range():
+def test_slice_between_rejects_same_stop():
     from app.routes_repo import load_routes
 
     m1 = load_routes()["bursaray-m1"]
     with pytest.raises(ValueError):
-        m1.path("forward", 5, 5)
+        m1.slice_between(5, 5)
+
+
+def test_loop_slice_wraps_past_the_start():
+    from app.routes_repo import load_routes
+
+    r = load_routes()["bus-4g"]
+    n = len(r.canonical_stops())
+    # dönüş bacağındaki bir duraktan gidiş bacağındaki bir durağa: tur tamamlanır
+    seg, _ = r.slice_between(n - 3, 2)
+    assert len(seg) >= 2

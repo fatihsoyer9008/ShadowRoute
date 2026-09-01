@@ -41,21 +41,20 @@ def _resolve(route_id: str) -> Route:
     raise HTTPException(404, f"Bilinmeyen rota: {route_id}")
 
 
-def _summary(r: Route, direction: str | None = None) -> dict:
-    out = {
+def _summary(r: Route) -> dict:
+    stops = [name for name, _ in r.canonical_stops()]
+    lo, hi = r.default_span()
+    return {
         "id": r.id,
         "name": r.name,
         "mode": r.mode,
-        "directions": r.direction_labels,
-        "is_loop": r.loop_split is not None,
-        "stops": r.stops,
+        "is_loop": r.is_loop,
+        # Yolculuk sırasıyla duraklar. Kullanıcı buradan biniş/iniş seçer;
+        # yön, seçilen durak sırasından çıkar (ayrı "yön" seçimi yok).
+        "stops": stops or r.stops,
+        "default_from": lo,
+        "default_to": hi,
     }
-    if direction is not None:
-        # Duraktan durağa seçim için: o yöndeki sıralı durak adları.
-        dir_stops = [name for name, _ in r.stops_for(direction)]
-        out["stops"] = dir_stops or r.stops
-        out["has_stops"] = bool(dir_stops)
-    return out
 
 
 @app.get("/routes")
@@ -91,27 +90,21 @@ def search_lines(q: str = Query(..., min_length=1, description="Hat kodu ya da a
 
 
 @app.get("/routes/{route_id}")
-def route_detail(
-    route_id: str,
-    direction: str | None = Query(None, pattern="^(forward|backward)$"),
-):
-    """direction verilirse `stops` o yöndeki sıralı durak listesi olur
-    (duraktan durağa seçim için)."""
-    return _summary(_resolve(route_id), direction)
+def route_detail(route_id: str):
+    return _summary(_resolve(route_id))
 
 
 @app.get("/routes/{route_id}/shadow")
 def route_shadow(
     route_id: str,
-    direction: str = Query("forward", pattern="^(forward|backward)$"),
     when: datetime | None = Query(
         None, description="ISO 8601 kalkış zamanı. Boşsa: Türkiye saatiyle şimdi."
     ),
     from_stop: int | None = Query(
-        None, alias="from", ge=0, description="Biniş durağı sırası (o yöndeki listede, 0-tabanlı)"
+        None, alias="from", ge=0, description="Biniş durağı sırası (0-tabanlı)"
     ),
     to_stop: int | None = Query(
-        None, alias="to", ge=0, description="İniş durağı sırası"
+        None, alias="to", ge=0, description="İniş durağı sırası (0-tabanlı)"
     ),
 ):
     route = _resolve(route_id)
@@ -120,27 +113,26 @@ def route_shadow(
     if departure.tzinfo is None:
         departure = departure.replace(tzinfo=TURKEY_TZ)
 
-    dir_stops = route.stops_for(direction)
-    start_i = end_i = None
-    from_name = to_name = None
-    if (from_stop is not None or to_stop is not None) and dir_stops:
-        lo = from_stop or 0
-        hi = to_stop if to_stop is not None else len(dir_stops) - 1
-        if lo >= hi or hi >= len(dir_stops):
-            raise HTTPException(400, "Geçersiz durak aralığı (biniş < iniş olmalı)")
-        start_i, end_i = dir_stops[lo][1], dir_stops[hi][1]
-        from_name, to_name = dir_stops[lo][0], dir_stops[hi][0]
+    stops = route.canonical_stops()
+    lo, hi = route.default_span()
+    if from_stop is not None:
+        lo = from_stop
+    if to_stop is not None:
+        hi = to_stop
 
+    from_name = to_name = None
     try:
-        coords, tunnel_zones = route.path(direction, start_i, end_i)
+        if stops:
+            coords, tunnel_zones = route.slice_between(lo, hi)
+            from_name, to_name = stops[lo][0], stops[hi][0]
+        else:  # durak verisi yok -> tüm güzergah
+            coords, tunnel_zones = route.coords, route.tunnel_zones
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
     result = analyze(
-        coords,
-        departure,
-        avg_speed_kmh=route.avg_speed_kmh,
-        tunnel_zones=tunnel_zones,
+        coords, departure,
+        avg_speed_kmh=route.avg_speed_kmh, tunnel_zones=tunnel_zones,
     )
 
     payload = result.to_dict()
@@ -148,10 +140,8 @@ def route_shadow(
         "id": route.id,
         "name": route.name,
         "mode": route.mode,
-        "is_loop": route.loop_split is not None,
+        "is_loop": route.is_loop,
         "curated": route.id in STATIC_ROUTES,
-        "direction": direction,
-        "direction_label": route.direction_labels.get(direction, direction),
         "from_stop": from_name,
         "to_stop": to_name,
     }

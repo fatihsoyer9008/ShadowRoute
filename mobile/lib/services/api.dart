@@ -45,11 +45,10 @@ class Api {
         .toList();
   }
 
-  /// Bir hattın yön/durak detayı (statik ya da `live-<hatNo>`).
-  /// [direction] verilirse `stops` o yöndeki sıralı durak listesi olur.
-  Future<RouteSummary> routeDetail(String id, {String? direction}) async {
-    final data = await _getJson('/routes/$id',
-        query: direction == null ? null : {'direction': direction});
+  /// Bir hattın durak detayı (statik ya da `live-<hatNo>`).
+  /// Duraklar yolculuk sırasıyla; yön seçimi yok.
+  Future<RouteSummary> routeDetail(String id) async {
+    final data = await _getJson('/routes/$id');
     if (data is! Map) {
       throw const ApiException('Beklenmeyen sunucu cevabı (hat detayı).');
     }
@@ -58,12 +57,11 @@ class Api {
 
   Future<ShadowAnalysis> shadow(
     String routeId, {
-    required String direction,
     DateTime? when,
     int? fromStop,
     int? toStop,
   }) async {
-    final q = <String, String>{'direction': direction};
+    final q = <String, String>{};
     if (fromStop != null) q['from'] = '$fromStop';
     if (toStop != null) q['to'] = '$toStop';
     if (when != null) {
@@ -75,7 +73,8 @@ class Api {
           '${l.hour.toString().padLeft(2, '0')}:'
           '${l.minute.toString().padLeft(2, '0')}';
     }
-    final data = await _getJson('/routes/$routeId/shadow', query: q);
+    final data =
+        await _getJson('/routes/$routeId/shadow', query: q.isEmpty ? null : q);
     if (data is! Map) {
       throw const ApiException('Beklenmeyen sunucu cevabı (analiz).');
     }

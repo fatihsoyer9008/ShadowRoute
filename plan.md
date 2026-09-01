@@ -109,10 +109,13 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 
 ## 5. V2 Özellikleri
 - [x] **Nereden nereye (duraktan durağa)** — GeoJSON'a `stop_coords` eklendi,
-      duraklar polyline'a snap ediliyor (`Route.stops_for`), `path()` seçilen
-      aralığa daraltıyor. API: `?from=&to=`. Mobilde "Duraklar" bölümü + "Tüm hat".
+      duraklar polyline'a snap ediliyor (`Route.canonical_stops`),
+      `slice_between()` seçilen aralığa daraltıyor. API: `?from=&to=`.
       Örn. M1 Kültürpark→Gökdere: 3.9 km, %83 tünel, "koltuk fark etmez" —
       tüm hat için "SOL otur" derken.
+- [x] **Yön seçimi kaldırıldı** — biniş/iniş durağı zaten yönü belirtiyordu;
+      ayrı "Yön" adımı gereksizdi. Düz hatta `from > to` = ters yön, halka
+      hatta turu tamamlar.
 - [ ] **Zaman seçici:** "Yarın 14:00" için daha iyi arayüz (backend hazır).
 - [ ] **Hava durumu:** kapalıysa "hava bulutlu, istediğin yere geç kanka".
 - [ ] **Bina gölgeleri:** şehir merkezi için yaklaşık gölge modeli (zor, düşük öncelik).

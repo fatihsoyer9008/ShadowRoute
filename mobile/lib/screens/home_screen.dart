@@ -21,14 +21,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   RouteSummary? _selected;
   bool _loadingDetail = false;
-  String _direction = 'forward';
   DateTime? _when; // null => şimdi
   Future<ShadowAnalysis>? _resultFuture;
 
-  // Duraktan durağa
+  // Duraktan durağa (yön, seçilen durak sırasından çıkar)
   List<String> _stops = const [];
   int _fromIdx = 0;
-  int _toIdx = 0; // < 2 durak varsa kullanılmaz
+  int _toIdx = 0;
 
   @override
   void initState() {
@@ -89,40 +88,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _loadingDetail = false;
       _selected = r;
-      _direction =
-          r.directions.containsKey('forward') || r.directions.isEmpty
-              ? 'forward'
-              : r.directions.keys.first;
+      _stops = r.stops;
+      _fromIdx = r.defaultFrom.clamp(0, r.stops.isEmpty ? 0 : r.stops.length - 1);
+      _toIdx = r.defaultTo.clamp(0, r.stops.isEmpty ? 0 : r.stops.length - 1);
       _resultFuture = null;
-      _stops = const [];
     });
-    _loadStops();
-  }
-
-  void _changeDirection(String dir) {
-    setState(() {
-      _direction = dir;
-      _resultFuture = null;
-      _stops = const [];
-    });
-    _loadStops();
-  }
-
-  Future<void> _loadStops() async {
-    final r = _selected;
-    if (r == null) return;
-    try {
-      final detail = await _api.routeDetail(r.id, direction: _direction);
-      if (!mounted || _selected?.id != r.id) return;
-      setState(() {
-        _stops = detail.stops;
-        _fromIdx = 0;
-        _toIdx = _stops.length - 1;
-      });
-    } catch (_) {
-      // Durak listesi alınamazsa tüm hat üzerinden hesaplanır (from/to boş).
-      if (mounted) setState(() => _stops = const []);
-    }
   }
 
   Future<void> _pickTime() async {
@@ -150,15 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _calculate() {
     final route = _selected;
     if (route == null) return;
-    final wholeLine =
-        _stops.length < 2 || (_fromIdx == 0 && _toIdx == _stops.length - 1);
     setState(() {
       _resultFuture = _api.shadow(
         route.id,
-        direction: _direction,
         when: _when,
-        fromStop: wholeLine ? null : _fromIdx,
-        toStop: wholeLine ? null : _toIdx,
+        fromStop: _stops.length < 2 ? null : _fromIdx,
+        toStop: _stops.length < 2 ? null : _toIdx,
       );
     });
   }
@@ -183,25 +150,15 @@ class _HomeScreenState extends State<HomeScreen> {
             _ErrorBox(message: _curatedError!, onRetry: _loadCurated),
           ],
           if (_selected != null) ...[
-            const SizedBox(height: 20),
-            Text('Yön', style: t.labelLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: [
-                for (final e in _selected!.directions.entries)
-                  ButtonSegment(value: e.key, label: Text(e.value)),
-              ],
-              selected: {_direction},
-              onSelectionChanged: (s) => _changeDirection(s.first),
-            ),
             if (_stops.length >= 2) ...[
               const SizedBox(height: 20),
-              Text('Duraklar', style: t.labelLarge),
+              Text('Nereden nereye', style: t.labelLarge),
               const SizedBox(height: 8),
               _StopPicker(
                 stops: _stops,
                 fromIdx: _fromIdx,
                 toIdx: _toIdx,
+                isLoop: _selected!.isLoop,
                 onChanged: (from, to) => setState(() {
                   _fromIdx = from;
                   _toIdx = to;
@@ -259,27 +216,32 @@ class _StopPicker extends StatelessWidget {
     required this.stops,
     required this.fromIdx,
     required this.toIdx,
+    required this.isLoop,
     required this.onChanged,
   });
 
   final List<String> stops;
   final int fromIdx;
   final int toIdx;
+  final bool isLoop;
   final void Function(int from, int to) onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final wholeLine = fromIdx == 0 && toIdx == stops.length - 1;
+    // Yön yok: "Nereden" ile "Nereye" farklı olsun yeter, sıra önemli değil.
+    int otherIfEqual(int v, int other) {
+      if (v != other) return other;
+      return v < stops.length - 1 ? v + 1 : v - 1;
+    }
+
     return Column(
       children: [
-        _dropdown(context, 'Nereden', fromIdx, (v) {
-          onChanged(v, v >= toIdx ? (v + 1).clamp(0, stops.length - 1) : toIdx);
-        }),
+        _dropdown(context, 'Nereden', fromIdx,
+            (v) => onChanged(v, otherIfEqual(v, toIdx))),
         const SizedBox(height: 8),
-        _dropdown(context, 'Nereye', toIdx, (v) {
-          onChanged(v <= fromIdx ? (v - 1).clamp(0, stops.length - 1) : fromIdx, v);
-        }),
-        if (!wholeLine)
+        _dropdown(context, 'Nereye', toIdx,
+            (v) => onChanged(otherIfEqual(v, fromIdx), v)),
+        if (!isLoop && !(fromIdx == 0 && toIdx == stops.length - 1))
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(

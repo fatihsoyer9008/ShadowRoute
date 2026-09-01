@@ -6,10 +6,6 @@
     "name": "BursaRay M1 (Emek — Arabayatağı)",
     "mode": "metro",
     "avg_speed_kmh": 33,
-    "direction_labels": {
-      "forward": "Arabayatağı yönü",
-      "backward": "Emek yönü"
-    },
     "source": "Burulaş API (hatNo=1531), çekildi 2026-09-01; yeraltı bilgisi tr.wikipedia \"BursaRay istasyonları listesi\"",
     "tunnel_zones": [
       [

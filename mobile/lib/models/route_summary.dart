@@ -1,30 +1,36 @@
 /// Backend `GET /routes` veya `GET /routes/{id}` çıktısındaki bir hat.
+/// Duraklar yolculuk sırasıyla; yön, seçilen biniş/iniş sırasından çıkar.
 class RouteSummary {
   final String id;
   final String name;
   final String mode; // "bus" | "metro"
-  final Map<String, String> directions; // "forward"/"backward" -> etiket
   final List<String> stops;
   final bool isLoop;
+  final int defaultFrom;
+  final int defaultTo;
 
   const RouteSummary({
     required this.id,
     required this.name,
     required this.mode,
-    required this.directions,
     required this.stops,
     this.isLoop = false,
+    this.defaultFrom = 0,
+    this.defaultTo = 0,
   });
 
   factory RouteSummary.fromJson(Map<String, dynamic> j) {
-    final dir = (j['directions'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final stops =
+        (j['stops'] as List?)?.map((e) => e.toString()).toList() ?? const [];
     return RouteSummary(
       id: j['id'] as String,
       name: j['name'] as String,
       mode: (j['mode'] as String?) ?? 'bus',
-      directions: dir.map((k, v) => MapEntry(k, v.toString())),
-      stops: (j['stops'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      stops: stops,
       isLoop: j['is_loop'] == true,
+      defaultFrom: (j['default_from'] as num?)?.toInt() ?? 0,
+      defaultTo: (j['default_to'] as num?)?.toInt() ??
+          (stops.isEmpty ? 0 : stops.length - 1),
     );
   }
 

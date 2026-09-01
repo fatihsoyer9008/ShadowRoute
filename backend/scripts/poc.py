@@ -6,7 +6,7 @@ hesabını gösterir.
 Kullanım:
     python -m scripts.poc                         # tüm rotalar, "şimdi"
     python -m scripts.poc bursaray-m1 2026-09-01T18:30
-    python -m scripts.poc bus-38 2026-06-21T08:00 backward
+    python -m scripts.poc bursaray-m1 2026-06-21T08:00 10:15   # 11.->16. durak arası
 """
 from __future__ import annotations
 
@@ -28,14 +28,21 @@ BAR = {Side.LEFT: "<< SOL ", Side.RIGHT: " SAG >>", Side.FRONT: "^^ ON  ",
        Side.BACK: "vv ARKA", Side.NONE: "  --   "}
 
 
-def run(route_id: str, departure: datetime, direction: str) -> None:
+def run(route_id: str, departure: datetime, span: tuple[int, int] | None) -> None:
     route = load_routes()[route_id]
-    coords, tunnel_zones = route.path(direction)
+    stops = route.canonical_stops()
+    lo, hi = span or route.default_span()
+    label = f"{route.name}"
+    if stops:
+        coords, tunnel_zones = route.slice_between(lo, hi)
+        label += f"   [{stops[lo][0]} → {stops[hi][0]}]"
+    else:
+        coords, tunnel_zones = route.coords, route.tunnel_zones
     res = analyze(coords, departure, avg_speed_kmh=route.avg_speed_kmh,
                   tunnel_zones=tunnel_zones)
 
     print("=" * 78)
-    print(f"{route.name}   [{route.direction_labels.get(direction, direction)}]")
+    print(label)
     print(f"Kalkış: {departure:%Y-%m-%d %H:%M} (+03)   "
           f"Süre ~{res.trip_duration_min:.0f} dk   Uzunluk {res.total_length_m/1000:.1f} km")
     print(f"Yumuşatma sonrası {len(res.segments)} segment "
@@ -63,7 +70,8 @@ def main(argv: list[str]) -> None:
     routes = load_routes()
     route_ids = [argv[0]] if argv and argv[0] in routes else list(routes)
     when_arg = next((a for a in argv if a[:4].isdigit()), None)
-    direction = "backward" if "backward" in argv else "forward"
+    span_arg = next((a for a in argv if ":" in a and a.replace(":", "").isdigit()), None)
+    span = tuple(int(x) for x in span_arg.split(":")) if span_arg else None
 
     departure = (
         datetime.fromisoformat(when_arg).replace(tzinfo=TURKEY_TZ)
@@ -76,7 +84,7 @@ def main(argv: list[str]) -> None:
           f"güneş azimut {sp.azimuth_deg:.0f}°, yükseklik {sp.altitude_deg:.0f}°\n")
 
     for rid in route_ids:
-        run(rid, departure, direction)
+        run(rid, departure, span)
 
 
 if __name__ == "__main__":

@@ -51,7 +51,6 @@ class RouteSegment {
 /// Backend `GET /routes/{id}/shadow` çıktısı.
 class ShadowAnalysis {
   final String routeName;
-  final String directionLabel;
   final String? fromStop;
   final String? toStop;
   final DateTime departure;
@@ -70,7 +69,6 @@ class ShadowAnalysis {
 
   const ShadowAnalysis({
     required this.routeName,
-    required this.directionLabel,
     this.fromStop,
     this.toStop,
     required this.departure,
@@ -92,7 +90,6 @@ class ShadowAnalysis {
 
     return ShadowAnalysis(
       routeName: (route['name'] as String?) ?? '',
-      directionLabel: (route['direction_label'] as String?) ?? '',
       fromStop: route['from_stop'] as String?,
       toStop: route['to_stop'] as String?,
       departure:

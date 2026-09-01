@@ -19,8 +19,7 @@ class ResultCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${result.routeName} · ${result.directionLabel}',
-                style: t.titleMedium),
+            Text(result.routeName, style: t.titleMedium),
             if (result.fromStop != null && result.toStop != null) ...[
               const SizedBox(height: 2),
               Row(

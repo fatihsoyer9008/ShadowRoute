@@ -6,10 +6,6 @@
     "name": "38 — Terminal / Heykel",
     "mode": "bus",
     "avg_speed_kmh": 22,
-    "direction_labels": {
-      "forward": "Heykel yönü (gidiş)",
-      "backward": "Terminal yönü (dönüş)"
-    },
     "loop_split": 230,
     "tunnel_zones": [],
     "source": "Burulaş API (hatNo=1012), çekildi 2026-09-01. Kapalı halka hat; loop_split ~Heykel dönüş noktası.",
