@@ -34,10 +34,22 @@ uvicorn app.main:app --reload
 | `GET /routes` | Tanımlı hatlar |
 | `GET /routes/{id}/shadow?when=ISO&direction=forward\|backward` | Analiz. `when` boşsa Türkiye saatiyle şimdi. |
 
+## Canlı Burulaş verisi (Faz 0 — çalışıyor)
+
+```bash
+python -m scripts.fetch_route M1                       # BursaRay M1, "şimdi"
+python -m scripts.fetch_route 38 2026-09-01T08:00
+python -m scripts.fetch_route 38 --save                # data/routes/ altına GeoJSON
+```
+
+Base URL `https://bursakartapi.abys-web.com`, kimlik doğrulama yok, POST+JSON.
+Detay ve endpoint listesi: [`plan.md`](../plan.md) Faz 0. Resmi/dokümante bir
+API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korunuyor.
+
 ## Testler
 
 ```bash
-python -m pytest
+python -m pytest        # 14 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
