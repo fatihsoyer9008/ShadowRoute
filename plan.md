@@ -65,10 +65,13 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [ ] Tünel segmentlerini gerçek BursaRay (M1/M2) güzergahına işaretle
 - [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
 
-### Faz 3 — Mobil (Flutter)
-- [ ] Sade UI: yön seçici + sonuç kartı
-- [ ] FastAPI servis katmanı, loading / hata durumları
-- [ ] Sonuç görselleştirme (koltuk grafiği, güneşli segment haritası)
+### Faz 3 — Mobil (Flutter)  🚧 MVP iskeleti hazır (`mobile/`)
+- [x] Sade UI: hat dropdown + yön SegmentedButton + zaman seçici + sonuç kartı
+- [x] FastAPI servis katmanı (`services/api.dart`), loading / Türkçe hata durumları
+- [x] Koltuk grafiği (`SeatDiagram`) + taraf dağılım çubuğu + not listesi
+- [x] Uçtan uca doğrulandı (Flutter web → backend → motor)
+- [ ] Gerçek cihaz/emülatör testi, hat arama ekranı, güneşli segment haritası
+- [ ] `API_BASE` prod adresi + HTTPS (şimdilik dev cleartext)
 
 ### Faz 4 — Test & saha
 - [ ] Gündoğumu/günbatımı edge-case testleri
