@@ -26,6 +26,28 @@ extension SunSideX on SunSide {
       };
 }
 
+/// Rotanın bir parçası — harita çizimi için konum + güneş tarafı.
+class RouteSegment {
+  final double lat;
+  final double lon;
+  final SunSide side;
+  final bool inTunnel;
+
+  const RouteSegment({
+    required this.lat,
+    required this.lon,
+    required this.side,
+    required this.inTunnel,
+  });
+
+  factory RouteSegment.fromJson(Map<String, dynamic> j) => RouteSegment(
+        lat: (j['lat'] as num?)?.toDouble() ?? 0,
+        lon: (j['lon'] as num?)?.toDouble() ?? 0,
+        side: sunSideFromString(j['side'] as String?),
+        inTunnel: j['in_tunnel'] == true,
+      );
+}
+
 /// Backend `GET /routes/{id}/shadow` çıktısı.
 class ShadowAnalysis {
   final String routeName;
@@ -41,6 +63,9 @@ class ShadowAnalysis {
   /// Rota uzunluğunun yüzdesi olarak taraf dağılımı (left/right/front/back/none).
   final Map<SunSide, double> breakdownPct;
 
+  /// Rota segmentleri (konum + güneş tarafı) — harita için.
+  final List<RouteSegment> segments;
+
   const ShadowAnalysis({
     required this.routeName,
     required this.directionLabel,
@@ -52,6 +77,7 @@ class ShadowAnalysis {
     required this.headline,
     required this.notes,
     required this.breakdownPct,
+    required this.segments,
   });
 
   factory ShadowAnalysis.fromJson(Map<String, dynamic> j) {
@@ -78,6 +104,11 @@ class ShadowAnalysis {
         SunSide.back: pct('back'),
         SunSide.none: pct('none'),
       },
+      segments: (j['segments'] as List?)
+              ?.map((e) =>
+                  RouteSegment.fromJson((e as Map).cast<String, dynamic>()))
+              .toList() ??
+          const [],
     );
   }
 

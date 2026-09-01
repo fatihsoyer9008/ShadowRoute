@@ -90,7 +90,9 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] **Hat arama ekranı** — `SearchScreen`: hazır hatlar + Burulaş canlı arama
       (`/search`), seçilince `/routes/{id}` ile detay çekiliyor. Canlı hatlarda
       `auto_loop_split` + 12 sa cache.
-- [ ] Güneşli segment haritası (backend `lat/lon` veriyor)
+- [x] **Güneşli segment haritası** — `RouteSunMap` (CustomPainter, alt harita
+      yok): rota şekli parça parça güneş tarafına göre renkli; tünel bölümü gri
+      görünüyor. En-boy oranı rotanın coğrafyasına uyarlanıyor.
 - [ ] `API_BASE` prod adresi + HTTPS (şimdilik dev cleartext, LAN IP ile test)
 
 ### Faz 4 — Test & saha

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/shadow_analysis.dart';
+import 'route_sun_map.dart';
 import 'seat_diagram.dart';
 
 class ResultCard extends StatelessWidget {
@@ -48,6 +49,10 @@ class ResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _Breakdown(breakdown: result.breakdownPct),
+            if (result.segments.length >= 2) ...[
+              const SizedBox(height: 16),
+              RouteSunMap(segments: result.segments),
+            ],
             if (result.notes.isNotEmpty) ...[
               const SizedBox(height: 12),
               for (final n in result.notes)
