@@ -149,32 +149,48 @@ def test_smooth_route_denoises_but_keeps_shape():
     assert haversine_m(out[-1], raw[-1]) < 1.0
 
 
-# --- gerçek BursaRay M1 hattı + tünel bölgeleri --------------------------
-def test_m1_route_tunnel_zones():
+# --- gerçek BursaRay M1 / M2 hatları + tünel bölgeleri ------------------
+@pytest.mark.parametrize(
+    "route_id, band",
+    [("bursaray-m1", (0.20, 0.35)), ("bursaray-m2", (0.15, 0.28))],
+)
+def test_bursaray_tunnel_zones(route_id, band):
     from app.routes_repo import load_routes
 
-    m1 = load_routes()["bursaray-m1"]
+    route = load_routes()[route_id]
     dep = datetime(2026, 6, 21, 13, 0, tzinfo=TURKEY_TZ)  # tepe güneş
+    lo, hi = band
 
     for direction in ("forward", "backward"):
-        coords, zones = m1.path(direction)
-        res = analyze(coords, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=zones)
+        coords, zones = route.path(direction)
+        res = analyze(coords, dep, avg_speed_kmh=route.avg_speed_kmh, tunnel_zones=zones)
 
-        # Yeraltı payı istasyon oranıyla (~6/20) tutarlı bir bantta olmalı.
-        assert 0.20 <= res.pct_length(Side.NONE) / 100 <= 0.35, direction
+        assert lo <= res.pct_length(Side.NONE) / 100 <= hi, (route_id, direction)
 
-        # Merinos–Demirtaşpaşa çekirdek tüneli boyunca güneş etkisi sıfır.
+        # Merinos–Demirtaşpaşa ortak çekirdek tüneli boyunca güneş etkisi sıfır.
         core = [
             s for s in res.segments
             if 40.186 <= s.mid[0] <= 40.199 and 29.051 <= s.mid[1] <= 29.068
         ]
-        assert core, direction
-        assert all(s.side is Side.NONE and s.in_tunnel for s in core), direction
+        assert core, (route_id, direction)
+        assert all(s.side is Side.NONE and s.in_tunnel for s in core), (route_id, direction)
 
         # Kültürpark (hemzemin) civarı tünel sayılmamalı.
         kulturpark = [s for s in res.segments
                       if haversine_m(s.mid, (40.20033, 29.0407)) < 150]
-        assert kulturpark and not any(s.in_tunnel for s in kulturpark), direction
+        assert kulturpark and not any(s.in_tunnel for s in kulturpark), (route_id, direction)
+
+
+def test_m1_m2_share_the_central_tunnel_zones():
+    from app.routes_repo import load_routes
+
+    routes = load_routes()
+    m1 = set(routes["bursaray-m1"].tunnel_zones)
+    m2 = set(routes["bursaray-m2"].tunnel_zones)
+    shared = m1 & m2
+    # Acemler (1) + merkez tüneli (7) = 8 ortak bölge, tek yerde tanımlı.
+    assert len(shared) == 8
+    assert (40.213033, 29.014883, 470) in shared  # Acemler
 
 
 def test_analyze_all_night_is_no_preference():

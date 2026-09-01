@@ -55,7 +55,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 20 test, ağ gerektirmez
+python -m pytest        # 22 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
@@ -63,14 +63,21 @@ python -m pytest        # 20 test, ağ gerektirmez
 ```
 app/
   core/
-    geo.py      bearing + haversine (saf matematik)
+    geo.py      bearing + haversine + polyline yumuşatma (saf matematik)
     sun.py      suncalc sarmalayıcı — azimut'u pusula açısına çevirir
     shadow.py   ÇEKIRDEK: analyze() -> RouteShadow
   data/routes/  statik GeoJSON hatlar (MVP'de DB yok)
-  routes_repo.py GeoJSON yükleyici + gidiş/dönüş ters çevirme
+  data/tunnel_zones.json  M1/M2 ortak yeraltı bölgeleri (tunnel_zone_refs ile bağlanır)
+  routes_repo.py GeoJSON yükleyici + ortak tünel çözümleme + gidiş/dönüş
+  burulas.py    Burulaş API istemcisi
   main.py       FastAPI kabuğu
-scripts/poc.py  terminal demo
+scripts/poc.py        terminal demo (statik hatlar)
+scripts/fetch_route.py canlı Burulaş çekme + analiz
 ```
+
+Bir rota hem kendi `tunnel_zones` dizisini hem de `tunnel_zone_refs`
+(örn. `["bursaray-acemler", "bursaray-merkez"]`) ile ortak bölgeleri
+kullanabilir; `routes_repo` ikisini birleştirir.
 
 ## Algoritma özeti
 

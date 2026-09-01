@@ -11,17 +11,10 @@
     },
     "source": "Burulaş API (hatNo=1531), çekildi 2026-09-01; yeraltı bilgisi tr.wikipedia \"BursaRay istasyonları listesi\"",
     "tunnel_zones": [
-      [40.250617, 28.957317, 380],
-      [40.213033, 29.014883, 470],
-      [40.199100, 29.047600, 240],
-      [40.197633, 29.049400, 420],
-      [40.196117, 29.056383, 470],
-      [40.192300, 29.059600, 560],
-      [40.188600, 29.062583, 470],
-      [40.187333, 29.069000, 430],
-      [40.187800, 29.072100, 260]
+      [40.250617, 28.957317, 380]
     ],
-    "_tunnel_note": "Yeraltı istasyonlar (tr.wikipedia): Korupark; Bursaspor/Acemler; Merinos-Osmangazi-Şehreküstü-Demirtaşpaşa kesintisiz tünel + portal payları. Format (lat, lon, yarıçap_m). Toplam ~5.0 km / 17.6 km (~28%), 6/20 istasyon yeraltı ile tutarlı.",
+    "tunnel_zone_refs": ["bursaray-acemler", "bursaray-merkez"],
+    "_tunnel_note": "M1'e özel yeraltı: Korupark. Ortak (Acemler + merkez tüneli) data/tunnel_zones.json'dan. Toplam ~5.0 km / 17.6 km (~28%), 6/20 istasyon yeraltı ile tutarlı. Kaynak: tr.wikipedia.",
     "stops": [
       "Emek",
       "Korupark",

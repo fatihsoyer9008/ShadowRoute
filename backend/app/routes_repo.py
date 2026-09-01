@@ -11,10 +11,24 @@ from pathlib import Path
 
 from .core.geo import Point
 
-ROUTES_DIR = Path(__file__).parent / "data" / "routes"
+DATA_DIR = Path(__file__).parent / "data"
+ROUTES_DIR = DATA_DIR / "routes"
+SHARED_ZONES_FILE = DATA_DIR / "tunnel_zones.json"
 
 
 TunnelZone = tuple[float, float, float]  # (lat, lon, yarıçap_m)
+
+
+def _load_shared_zones() -> dict[str, list[TunnelZone]]:
+    """M1/M2 ortak yeraltı bölgeleri (bkz. data/tunnel_zones.json)."""
+    if not SHARED_ZONES_FILE.exists():
+        return {}
+    raw = json.loads(SHARED_ZONES_FILE.read_text(encoding="utf-8"))
+    return {
+        key: [tuple(z) for z in group["zones"]]
+        for key, group in raw.items()
+        if isinstance(group, dict) and "zones" in group
+    }
 
 
 @dataclass(frozen=True)
@@ -37,11 +51,18 @@ class Route:
         return coords, self.tunnel_zones
 
 
-def _load_one(fp: Path) -> Route:
+def _load_one(fp: Path, shared_zones: dict[str, list[TunnelZone]]) -> Route:
     raw = json.loads(fp.read_text(encoding="utf-8"))
     props = raw["properties"]
     lonlat = raw["geometry"]["coordinates"]
     coords: list[Point] = [(lat, lon) for lon, lat in lonlat]
+
+    zones: list[TunnelZone] = [tuple(z) for z in props.get("tunnel_zones", [])]
+    for ref in props.get("tunnel_zone_refs", []):
+        if ref not in shared_zones:
+            raise KeyError(f"{fp.name}: bilinmeyen tunnel_zone_refs '{ref}'")
+        zones.extend(shared_zones[ref])
+
     return Route(
         id=props["id"],
         name=props["name"],
@@ -50,11 +71,15 @@ def _load_one(fp: Path) -> Route:
         direction_labels=props.get(
             "direction_labels", {"forward": "Gidiş", "backward": "Dönüş"}
         ),
-        tunnel_zones=[tuple(z) for z in props.get("tunnel_zones", [])],
+        tunnel_zones=zones,
         coords=coords,
         stops=props.get("stops", []),
     )
 
 
 def load_routes() -> dict[str, Route]:
-    return {r.id: r for r in (_load_one(fp) for fp in sorted(ROUTES_DIR.glob("*.geojson")))}
+    shared = _load_shared_zones()
+    return {
+        r.id: r
+        for r in (_load_one(fp, shared) for fp in sorted(ROUTES_DIR.glob("*.geojson")))
+    }

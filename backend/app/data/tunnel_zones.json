@@ -1,0 +1,21 @@
+{
+  "_note": "BursaRay M1 & M2 ortak yeraltı bölgeleri. Rotalar bunlara 'tunnel_zone_refs' ile bağlanır; böylece merkez tüneli tek yerde tanımlı kalır. Her bölge (lat, lon, yarıçap_m). Kaynak: tr.wikipedia 'BursaRay istasyonları listesi'.",
+  "bursaray-acemler": {
+    "note": "Bursaspor/Acemler yeraltı istasyonu — M1 ve M2'nin birleştiği nokta.",
+    "zones": [
+      [40.213033, 29.014883, 470]
+    ]
+  },
+  "bursaray-merkez": {
+    "note": "Merinos–Osmangazi–Şehreküstü–Demirtaşpaşa şehir merkezi kesintisiz tüneli + portal payları. M1 ve M2 ortak kullanır.",
+    "zones": [
+      [40.199100, 29.047600, 240],
+      [40.197633, 29.049400, 420],
+      [40.196117, 29.056383, 470],
+      [40.192300, 29.059600, 560],
+      [40.188600, 29.062583, 470],
+      [40.187333, 29.069000, 430],
+      [40.187800, 29.072100, 260]
+    ]
+  }
+}
