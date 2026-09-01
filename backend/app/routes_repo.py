@@ -41,13 +41,25 @@ class Route:
     tunnel_zones: list[TunnelZone]   # coğrafi; yöne bağlı değil
     coords: list[Point]             # (lat, lon), forward yön
     stops: list[str]
+    loop_split: int | None = None   # kapalı halka hatlarda dönüş noktasının indeksi
 
     def path(self, direction: str) -> tuple[list[Point], list[TunnelZone]]:
-        """direction: 'forward' | 'backward'. Tünel bölgeleri coğrafi olduğu
-        için yönle değişmez; sadece koordinatlar ters çevrilir."""
+        """direction: 'forward' | 'backward'.
+
+        Düz hat: backward = koordinatların tersi.
+        Halka hat (`loop_split` dolu): forward = başlangıç→dönüş noktası,
+        backward = dönüş noktası→başlangıç (halka zaten geri döndüğü için
+        ters çevrilmez). Tünel bölgeleri coğrafi, yönden bağımsız."""
         if direction not in ("forward", "backward"):
             raise ValueError("direction 'forward' ya da 'backward' olmalı")
-        coords = self.coords if direction == "forward" else list(reversed(self.coords))
+
+        if self.loop_split is not None:
+            s = self.loop_split
+            coords = self.coords[: s + 1] if direction == "forward" else self.coords[s:]
+        elif direction == "forward":
+            coords = self.coords
+        else:
+            coords = list(reversed(self.coords))
         return coords, self.tunnel_zones
 
 
@@ -74,6 +86,7 @@ def _load_one(fp: Path, shared_zones: dict[str, list[TunnelZone]]) -> Route:
         tunnel_zones=zones,
         coords=coords,
         stops=props.get("stops", []),
+        loop_split=props.get("loop_split"),
     )
 
 

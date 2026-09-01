@@ -197,3 +197,25 @@ def test_analyze_all_night_is_no_preference():
     coords = [(40.19, 29.00), (40.19, 29.10)]
     res = analyze(coords, datetime(2026, 1, 15, 3, 0, tzinfo=TURKEY_TZ), avg_speed_kmh=20)
     assert res.recommended_side is Side.NONE
+
+
+# --- kapalı halka hat (bus 38) -----------------------------------------
+def test_loop_route_splits_into_two_legs():
+    from app.routes_repo import load_routes
+
+    r = load_routes()["bus-38"]
+    assert r.loop_split is not None
+
+    fwd, _ = r.path("forward")
+    bwd, _ = r.path("backward")
+
+    # İki bacak ayrı yollar (biri diğerinin tersi DEĞİL) ve dönüş noktasında birleşiyor.
+    assert fwd[-1] == bwd[0]
+    assert fwd != list(reversed(bwd))
+    assert len(fwd) + len(bwd) == len(r.coords) + 1
+
+    # Kuzey-güney bir hat: sabah güneşi iki bacakta zıt taraflara düşmeli.
+    dep = datetime(2026, 6, 21, 8, 0, tzinfo=TURKEY_TZ)
+    f = analyze(fwd, dep, avg_speed_kmh=r.avg_speed_kmh)
+    b = analyze(bwd, dep, avg_speed_kmh=r.avg_speed_kmh)
+    assert {f.recommended_side, b.recommended_side} == {Side.LEFT, Side.RIGHT}

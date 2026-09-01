@@ -55,7 +55,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 22 test, ağ gerektirmez
+python -m pytest        # 23 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
@@ -79,6 +79,11 @@ Bir rota hem kendi `tunnel_zones` dizisini hem de `tunnel_zone_refs`
 (örn. `["bursaray-acemler", "bursaray-merkez"]`) ile ortak bölgeleri
 kullanabilir; `routes_repo` ikisini birleştirir.
 
+**Kapalı halka hatlar** (ör. 38 — Terminal ↔ Heykel): GeoJSON'da `loop_split`
+= dönüş noktasının koordinat indeksi. `path("forward")` = başlangıç→dönüş,
+`path("backward")` = dönüş→başlangıç (halka zaten geri döndüğü için ters
+çevrilmez). Bölünmezse tek yönlü halka ~%50/50 sonuç verirdi.
+
 ## Algoritma özeti
 
 0. **Polyline yumuşatma** (`geo.smooth_route`): ham Burulaş güzergahı önce
@@ -100,7 +105,8 @@ kullanabilir; `routes_repo` ikisini birleştirir.
    alan taraf** önerilir. Ön camdan güneş için "kaçış yok" uyarısı eklenir.
 
 > Not: Gerçekten çok dönen bir hat (ör. 38 kampüs turu) için sol/sağ ~%50/50
-> çıkabilir — bu doğru cevaptır, o hatta net bir gölge tarafı yoktur.
+> çıkabilir — bu doğru cevaptır, o hatta net bir gölge tarafı yoktur. (38
+> halka hattı `loop_split` ile ikiye bölününce net sonuç veriyor.)
 
 `analyze()` yumuşatma parametreleri: `simplify_epsilon_m` (0 = kapalı),
 `resample_step_m` (None = kapalı), `tunnel_zones`.
@@ -110,5 +116,5 @@ kullanabilir; `routes_repo` ikisini birleştirir.
 - Bina/ağaç gölgeleri modellenmez (şehir içinde gerçek etkiyi azaltır).
 - Cam rengi / araç tipi hesaba katılmaz.
 - Yolcunun tüm hattı bindiği varsayılır ("nereden nereye" V2).
-- `bursaray-m1.geojson` **gerçek Burulaş verisi** (hatNo 1531); yeraltı bölgeleri
-  tr.wikipedia istasyon listesinden. `bus-38.geojson` hâlâ sentetik.
+- Tüm hatlar **gerçek Burulaş verisi**: `bursaray-m1` (1531), `bursaray-m2`
+  (1519), `bus-38` (1012). Yeraltı bölgeleri tr.wikipedia istasyon listesinden.

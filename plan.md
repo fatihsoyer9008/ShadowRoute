@@ -72,7 +72,8 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
       - M2'ye özel: Yüzüncüyıl, Odunluk
       - Kaynak: tr.wikipedia "BursaRay istasyonları listesi"
 - [x] `SegmentAnalysis.mid` + API'de segment `lat/lon` (harita özelliği için hazır)
-- [ ] Sentetik `bus-38` yerine gerçek 38 verisini çek
+- [x] **38 hattı gerçek veriyle** (hatNo 1012) — kapalı halka; `loop_split` ile
+      "Heykel yönü / Terminal yönü" olarak ikiye bölündü (yoksa ~%50/50 çıkıyordu)
 - [ ] Basit cache (dosya/SQLite/Redis) — rotalar nadiren değişir
 - [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
 
