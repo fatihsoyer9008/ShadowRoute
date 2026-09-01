@@ -8,3 +8,6 @@ __pycache__/
 
 # Burulaş yanıt cache'i (runtime'da dolar)
 backend/app/data/.cache/
+
+# Sunucuya özel deploy değerleri
+deploy/.env

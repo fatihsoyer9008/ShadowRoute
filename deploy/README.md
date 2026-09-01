@@ -1,22 +1,25 @@
-# Deploy — Hetzner (116.202.14.23)
+# Deploy
 
-Sunucu Caddy + Docker Compose deseni kullanıyor; her uygulama bir subdomain.
-Gölge Rota API: **https://golgerota.116-202-14-23.sslip.io**
+Sunucu Caddy + Docker Compose deseni kullanıyor; her uygulama bir subdomain
+altında, localhost'a bağlı bir port, Caddy ters proxy + otomatik HTTPS.
+
+Sunucuya özel değerler (IP, subdomain, port) `deploy/.env` dosyasında —
+takip edilmiyor. Şablon: [`deploy/.env.example`](.env.example).
 
 ## İlk kurulum
 
 ```bash
-ssh root@116.202.14.23
-git clone https://github.com/fatihsoyer9008/ShadowRoute.git /root/GolgeRota
-cd /root/GolgeRota
-docker compose -f deploy/docker-compose.yml up -d --build   # -> 127.0.0.1:8010
+ssh root@$SERVER_HOST
+git clone <repo-url> /root/GolgeRota && cd /root/GolgeRota
+cp deploy/.env.example deploy/.env      # değerleri doldur
+docker compose -f deploy/docker-compose.yml up -d --build   # -> 127.0.0.1:$APP_PORT
 ```
 
-Caddyfile'a (`/etc/caddy/Caddyfile`) blok ekle, sonra `systemctl reload caddy`:
+Caddyfile'a (`/etc/caddy/Caddyfile`) blok ekle, `systemctl reload caddy`:
 
 ```
-golgerota.116-202-14-23.sslip.io {
-	reverse_proxy 127.0.0.1:8010
+$API_SUBDOMAIN {
+	reverse_proxy 127.0.0.1:$APP_PORT
 }
 ```
 
@@ -30,12 +33,15 @@ docker compose -f deploy/docker-compose.yml up -d --build
 ## Kontrol
 
 ```bash
-curl -s https://golgerota.116-202-14-23.sslip.io/routes | head -c 200
+curl -s https://$API_SUBDOMAIN/routes | head -c 200
 docker logs golgerota_api --tail 30
 ```
 
-Mobil uygulamayı bu adrese bağlamak için:
+## Mobil uygulamayı canlı API'ye bağlama
 
 ```bash
-flutter build apk --release --dart-define=API_BASE=https://golgerota.116-202-14-23.sslip.io
+flutter build apk --release --dart-define=API_BASE=https://$API_SUBDOMAIN
 ```
+
+`mobile/lib/config.dart` içindeki varsayılan `API_BASE` de canlı adresi
+gösteriyor; kendi sunucun farklıysa orayı güncelle veya hep `--dart-define` ver.

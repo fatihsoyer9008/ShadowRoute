@@ -1,6 +1,7 @@
-# Gölge Rota — Hetzner deploy (Caddy reverse-proxy arkasında)
+# Gölge Rota — deploy (Caddy reverse-proxy arkasında)
 # Kullanım (sunucuda /root/GolgeRota/ altında):
-#   git pull && docker compose -f deploy/docker-compose.yml up -d --build
+#   cp deploy/.env.example deploy/.env   # değerleri doldur (APP_PORT vb.)
+#   docker compose -f deploy/docker-compose.yml up -d --build
 services:
   api:
     build:
@@ -9,7 +10,8 @@ services:
     container_name: golgerota_api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8010:8000"      # yalnız localhost; dışarıya Caddy açıyor
+      # APP_PORT: deploy/.env'den okunur (yoksa 8010). Yalnız localhost; dışarıya Caddy açıyor.
+      - "127.0.0.1:${APP_PORT:-8010}:8000"
     volumes:
       - burulas_cache:/app/app/data/.cache
     healthcheck:
