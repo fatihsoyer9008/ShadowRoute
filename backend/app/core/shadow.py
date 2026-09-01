@@ -59,6 +59,7 @@ class SegmentAnalysis:
     index: int
     length_m: float
     bearing_deg: float
+    mid: Point                # segment orta noktası (lat, lon) — harita/görselleştirme için
     when: datetime
     sun_azimuth_deg: float
     sun_altitude_deg: float
@@ -112,6 +113,8 @@ class RouteShadow:
                     "index": s.index,
                     "length_m": round(s.length_m),
                     "bearing_deg": round(s.bearing_deg, 1),
+                    "lat": round(s.mid[0], 6),
+                    "lon": round(s.mid[1], 6),
                     "when": s.when.isoformat(),
                     "sun_azimuth_deg": round(s.sun_azimuth_deg, 1),
                     "sun_altitude_deg": round(s.sun_altitude_deg, 1),
@@ -210,6 +213,7 @@ def analyze(
                 index=i,
                 length_m=length,
                 bearing_deg=bearing,
+                mid=mid,
                 when=mid_time,
                 sun_azimuth_deg=sun.azimuth_deg,
                 sun_altitude_deg=sun.altitude_deg,

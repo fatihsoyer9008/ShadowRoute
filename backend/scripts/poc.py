@@ -5,7 +5,7 @@ hesabını gösterir.
 
 Kullanım:
     python -m scripts.poc                         # tüm rotalar, "şimdi"
-    python -m scripts.poc bursaray-t1 2026-09-01T18:30
+    python -m scripts.poc bursaray-m1 2026-09-01T18:30
     python -m scripts.poc bus-38 2026-06-21T08:00 backward
 """
 from __future__ import annotations

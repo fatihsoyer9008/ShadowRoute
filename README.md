@@ -14,7 +14,7 @@ hesaplayıp "hangi koltuğa otur" önerisi veren asistan.
 cd backend
 python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
-python -m scripts.poc bursaray-t1 2026-09-01T18:15   # çekirdek demo
+python -m scripts.poc bursaray-m1 2026-09-01T18:15   # çekirdek demo
 python -m scripts.fetch_route M1                     # canlı Burulaş verisi
 python -m pytest
 uvicorn app.main:app --reload                        # API :8000

@@ -22,7 +22,7 @@ Sunucu:  `uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
 ```bash
 python -m scripts.poc                              # tüm rotalar, "şimdi"
-python -m scripts.poc bursaray-t1 2026-09-01T18:15
+python -m scripts.poc bursaray-m1 2026-09-01T18:15
 python -m scripts.poc bus-38 2026-06-21T08:00 backward
 ```
 
@@ -55,7 +55,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 14 test, ağ gerektirmez
+python -m pytest        # 20 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
@@ -103,4 +103,5 @@ scripts/poc.py  terminal demo
 - Bina/ağaç gölgeleri modellenmez (şehir içinde gerçek etkiyi azaltır).
 - Cam rengi / araç tipi hesaba katılmaz.
 - Yolcunun tüm hattı bindiği varsayılır ("nereden nereye" V2).
-- GeoJSON koordinatları **sentetik/yaklaşık** — gerçek veri Burulaş'tan gelecek.
+- `bursaray-m1.geojson` **gerçek Burulaş verisi** (hatNo 1531); yeraltı bölgeleri
+  tr.wikipedia istasyon listesinden. `bus-38.geojson` hâlâ sentetik.

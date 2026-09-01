@@ -63,7 +63,13 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] **Polyline yumuşatma** — `geo.smooth_route` (Douglas–Peucker + yeniden
       örnekleme), `analyze()` içine gömülü
 - [x] Tünel gösterimi coğrafi bölgeye çevrildi (`tunnel_zones`, yön-bağımsız)
-- [ ] Tünel bölgelerini gerçek BursaRay (M1/M2) güzergahına göre ayarla
+- [x] **BursaRay M1 gerçek veriyle eklendi** (`bursaray-m1.geojson`, hatNo 1531)
+      + yeraltı bölgeleri: Korupark, Bursaspor/Acemler, Merinos–Osmangazi–
+      Şehreküstü–Demirtaşpaşa kesintisiz tünel (~%28, 6/20 istasyon ile tutarlı).
+      Kaynak: tr.wikipedia "BursaRay istasyonları listesi"
+- [x] `SegmentAnalysis.mid` + API'de segment `lat/lon` (harita özelliği için hazır)
+- [ ] M2 hattı + ortak (Acemler–Gökdere) yeraltı bölgelerini ekle
+- [ ] Sentetik `bus-38` yerine gerçek 38 verisini çek
 - [ ] Basit cache (dosya/SQLite/Redis) — rotalar nadiren değişir
 - [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
 

@@ -149,6 +149,34 @@ def test_smooth_route_denoises_but_keeps_shape():
     assert haversine_m(out[-1], raw[-1]) < 1.0
 
 
+# --- gerçek BursaRay M1 hattı + tünel bölgeleri --------------------------
+def test_m1_route_tunnel_zones():
+    from app.routes_repo import load_routes
+
+    m1 = load_routes()["bursaray-m1"]
+    dep = datetime(2026, 6, 21, 13, 0, tzinfo=TURKEY_TZ)  # tepe güneş
+
+    for direction in ("forward", "backward"):
+        coords, zones = m1.path(direction)
+        res = analyze(coords, dep, avg_speed_kmh=m1.avg_speed_kmh, tunnel_zones=zones)
+
+        # Yeraltı payı istasyon oranıyla (~6/20) tutarlı bir bantta olmalı.
+        assert 0.20 <= res.pct_length(Side.NONE) / 100 <= 0.35, direction
+
+        # Merinos–Demirtaşpaşa çekirdek tüneli boyunca güneş etkisi sıfır.
+        core = [
+            s for s in res.segments
+            if 40.186 <= s.mid[0] <= 40.199 and 29.051 <= s.mid[1] <= 29.068
+        ]
+        assert core, direction
+        assert all(s.side is Side.NONE and s.in_tunnel for s in core), direction
+
+        # Kültürpark (hemzemin) civarı tünel sayılmamalı.
+        kulturpark = [s for s in res.segments
+                      if haversine_m(s.mid, (40.20033, 29.0407)) < 150]
+        assert kulturpark and not any(s.in_tunnel for s in kulturpark), direction
+
+
 def test_analyze_all_night_is_no_preference():
     coords = [(40.19, 29.00), (40.19, 29.10)]
     res = analyze(coords, datetime(2026, 1, 15, 3, 0, tzinfo=TURKEY_TZ), avg_speed_kmh=20)
