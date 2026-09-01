@@ -1,0 +1,4 @@
+# Gölge Rota - backend bağımlılıkları
+suncalc>=0.1.3        # güneş azimut/altitude (suncalc.js portu); numpy'yi de çeker
+fastapi>=0.110
+uvicorn[standard]>=0.29

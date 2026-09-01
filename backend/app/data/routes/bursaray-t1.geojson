@@ -1,0 +1,33 @@
+{
+  "type": "Feature",
+  "properties": {
+    "id": "bursaray-t1",
+    "name": "BursaRay T1 (Emek — Kestel)",
+    "mode": "metro",
+    "avg_speed_kmh": 32,
+    "direction_labels": { "forward": "Kestel yönü", "backward": "Emek yönü" },
+    "tunnel_segments": [[3, 4]],
+    "source": "YAKLAŞIK / SENTETİK koordinatlar — PoC için. Gerçek veri Burulaş'tan çekilecek.",
+    "stops": [
+      "Emek", "Kültürpark", "Sırameşeler", "Şehreküstü",
+      "Osmangazi", "Demirtaşpaşa", "Stadyum", "Otosansit",
+      "Gökdere", "Organize Sanayi", "Kestel"
+    ]
+  },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [28.9450, 40.2280],
+      [28.9750, 40.2230],
+      [29.0000, 40.2150],
+      [29.0200, 40.2050],
+      [29.0450, 40.1920],
+      [29.0600, 40.1850],
+      [29.0800, 40.1830],
+      [29.1000, 40.1850],
+      [29.1200, 40.1900],
+      [29.1500, 40.1900],
+      [29.1800, 40.1850]
+    ]
+  }
+}

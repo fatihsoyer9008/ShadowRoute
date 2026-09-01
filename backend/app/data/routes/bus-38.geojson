@@ -1,0 +1,28 @@
+{
+  "type": "Feature",
+  "properties": {
+    "id": "bus-38",
+    "name": "38 — Kent Meydanı / Uludağ Üniversitesi",
+    "mode": "bus",
+    "avg_speed_kmh": 18,
+    "direction_labels": { "forward": "Üniversite yönü", "backward": "Kent Meydanı yönü" },
+    "tunnel_segments": [],
+    "source": "YAKLAŞIK / SENTETİK koordinatlar — PoC için.",
+    "stops": [
+      "Kent Meydanı", "Heykel", "Setbaşı", "Dörtçelik",
+      "Görükle Kavşağı", "Üniversite Girişi", "Kampüs Meydanı"
+    ]
+  },
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [29.0610, 40.1980],
+      [29.0680, 40.1900],
+      [29.0720, 40.1820],
+      [29.0600, 40.1720],
+      [29.0400, 40.1700],
+      [29.0250, 40.1850],
+      [29.0180, 40.2000]
+    ]
+  }
+}
