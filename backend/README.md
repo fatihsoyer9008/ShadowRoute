@@ -5,12 +5,18 @@ taraftan geldiğini segment segment hesaplayıp "hangi tarafa otur" önerisi ür
 
 ## Kurulum
 
-```bash
-cd backend
+Venv repo kökünde tutuluyor (`C:\ShadowRoute\.venv`), backend/ altında değil:
+
+```powershell
+# repo kökünden
 python -m venv .venv
-.venv\Scripts\activate            # Windows
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
 ```
+
+Aşağıdaki komutları `backend/` klasöründen çalıştır (venv aktifken).
+Sunucu:  `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+(venv aktif değilse: `C:\ShadowRoute\.venv\Scripts\uvicorn.exe ... --app-dir C:\ShadowRoute\backend`)
 
 ## PoC scripti (Burulaş'a dokunmadan)
 
