@@ -8,7 +8,9 @@ hesaplayıp "hangi koltuğa otur" önerisi veren asistan.
 - [`mobile/`](mobile/) — Flutter MVP (hat ara/seç → yön → gölge koltuk önerisi)
 - [`deploy/`](deploy/) — Hetzner (Docker + Caddy) deploy yapılandırması
 
-**Android APK:** [GitHub sürümleri](https://github.com/fatihsoyer9008/ShadowRoute/releases/latest) · [hızlı ayna](https://golgerota.116-202-14-23.sslip.io/dl/) · **Canlı API:** https://golgerota.116-202-14-23.sslip.io/routes
+**Web uygulaması (masaüstü/tarayıcı):** https://app.golgerota.116-202-14-23.sslip.io
+**Android APK:** [GitHub sürümleri](https://github.com/fatihsoyer9008/ShadowRoute/releases/latest) · [hızlı ayna](https://golgerota.116-202-14-23.sslip.io/dl/)
+**Canlı API:** https://golgerota.116-202-14-23.sslip.io/routes
 
 ## Hızlı başlangıç
 

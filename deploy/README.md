@@ -46,6 +46,38 @@ flutter build apk --release --dart-define=API_BASE=https://$API_SUBDOMAIN
 `mobile/lib/config.dart` içindeki varsayılan `API_BASE` de canlı adresi
 gösteriyor; kendi sunucun farklıysa orayı güncelle veya hep `--dart-define` ver.
 
+## Web uygulaması (masaüstü/tarayıcı)
+
+Flutter web build'i `app.$API_SUBDOMAIN` altında statik sunuluyor. Native
+`.exe` yerine bu — her OS'ta tarayıcıda çalışır, kurulum yok. (Gerçek
+Windows .exe için Visual Studio'da "Desktop development with C++" workload'ı
+gerekiyor; şimdilik kurulu değil.)
+
+```bash
+# yerelde
+cd mobile && flutter build web --release
+cd build && tar czf web.tgz web && scp -C web.tgz root@$SERVER_HOST:/tmp/
+# sunucuda
+ssh root@$SERVER_HOST '
+  cd /tmp && tar xzf web.tgz
+  rm -rf /var/www/golgerota-app && mv web /var/www/golgerota-app
+  chown -R caddy:caddy /var/www/golgerota-app'
+```
+
+Caddy bloğu:
+
+```
+app.$API_SUBDOMAIN {
+	root * /var/www/golgerota-app
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
+```
+
+`config.dart` varsayılan `API_BASE` canlı API'yi gösterdiği için düz
+`flutter build web` yeterli.
+
 ## APK aynası (GitHub bazı bölgelerde yavaş)
 
 Caddy `$API_SUBDOMAIN/dl/*` yolunu `/var/www/golgerota-dl/` klasöründen
