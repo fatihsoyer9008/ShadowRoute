@@ -1,5 +1,14 @@
 # Değişiklik günlüğü
 
+## v0.1.1 — 2026-09-01
+
+- **Yön seçimi kaldırıldı.** Artık sadece biniş ve iniş durağını seçiyorsun;
+  yön bu sıradan çıkıyor. Düz hatta ters durak sırası = ters yön, halka hatta
+  turu tamamlar. Bir adım az.
+- Masaüstü/tarayıcı için hosted web uygulaması: https://app.golgerota.116-202-14-23.sslip.io
+- APK: per-ABI (arm64 ~17 MB) + hızlı ayna (GitHub bazı bölgelerde yavaş).
+- Backend: bellek + disk cache, Burulaş çökünce statik hat / bayat veri fallback.
+
 ## v0.1.0 — 2026-09-01 (ilk sürüm)
 
 Bursa'da otobüs / BursaRay yolculuğunda güneşin hangi taraftan geleceğini
@@ -19,10 +28,9 @@ hesaplayıp "hangi koltuğa otur" önerisi veren MVP.
   listesi). M1/M2 merkez tüneli ortak tanımlı.
 - Kapalı halka hatlar (38, 4G) otomatik iki bacağa bölünür.
 - Herhangi bir Bursa hattı canlı aranıp analiz edilebilir (`/search`).
-- Burulaş yanıtları bellek + disk cache'li; API çökerse bayat veri / statik hat fallback'i.
 
 ### Uygulama (Android)
-- Hat ara/seç → yön → **duraktan durağa** → zaman → gölge koltuk önerisi.
+- Hat ara/seç → duraktan durağa → zaman → gölge koltuk önerisi.
 - Şematik koltuk diyagramı, rota boyunca güneş haritası, taraf dağılım çubuğu.
 - Backend canlı: `https://golgerota.116-202-14-23.sslip.io` (HTTPS).
 
@@ -31,6 +39,3 @@ hesaplayıp "hangi koltuğa otur" önerisi veren MVP.
 - Cam rengi / araç tipi hesaba katılmaz.
 - **Saha testi yapılmadı** — öneriler henüz gerçek yolculukla doğrulanmadı.
 - APK debug anahtarıyla imzalı (yan yükleme için; Play Store'a hazır değil).
-
-### Test
-- 45 backend testi (ağ gerektirmez), Flutter widget testi.
