@@ -51,11 +51,11 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] `shadow.py` — `analyze()`: segment sınıflandırma + öneri
   - [x] `altitude ≤ 0` ⇒ etki 0 (gece)
   - [x] `cos(altitude)` ile yatay-şiddet ağırlığı (öğlen yüksek güneş)
-  - [x] tünel/yeraltı segmentleri ⇒ etki 0 (GeoJSON `tunnel_segments`)
+  - [x] tünel/yeraltı bölgeleri ⇒ etki 0 (GeoJSON `tunnel_zones`, coğrafi daire)
   - [x] ön cam / arka cam / alçak güneş uyarıları
   - [x] yolculuk boyunca güneşi ilerletme (ortalama hız)
 - [x] `scripts/poc.py` — terminal demo
-- [x] pytest testleri (14)
+- [x] pytest testleri (19)
 
 ### Faz 2 — Burulaş entegrasyonu
 - [x] `app/burulas.py` — API istemcisi (search / routecoordinate / routestat)
@@ -71,9 +71,9 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] Sade UI: hat dropdown + yön SegmentedButton + zaman seçici + sonuç kartı
 - [x] FastAPI servis katmanı (`services/api.dart`), loading / Türkçe hata durumları
 - [x] Koltuk grafiği (`SeatDiagram`) + taraf dağılım çubuğu + not listesi
-- [x] Uçtan uca doğrulandı (Flutter web → backend → motor)
-- [ ] Gerçek cihaz/emülatör testi, hat arama ekranı, güneşli segment haritası
-- [ ] `API_BASE` prod adresi + HTTPS (şimdilik dev cleartext)
+- [x] Uçtan uca doğrulandı (Flutter web + gerçek Android telefon → backend → motor)
+- [ ] Hat arama ekranı (Burulaş search zaten hazır), güneşli segment haritası
+- [ ] `API_BASE` prod adresi + HTTPS (şimdilik dev cleartext, LAN IP ile test)
 
 ### Faz 4 — Test & saha
 - [ ] Gündoğumu/günbatımı edge-case testleri
