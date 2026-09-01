@@ -8,12 +8,23 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from .core.shadow import analyze
 from .core.sun import TURKEY_TZ
 from .routes_repo import load_routes
 
 app = FastAPI(title="Gölge Rota API", version="0.1.0")
+
+# Geliştirme kolaylığı: Flutter web / farklı port'tan erişime izin ver.
+# Prod'da bunu gerçek origin listesiyle daralt.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
 ROUTES = load_routes()
 
 
