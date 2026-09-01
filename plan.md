@@ -99,9 +99,13 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
       Güncelleme: sunucuda `git pull && docker compose -f deploy/... up -d --build`.
 
 ### Faz 4 — Test & saha
-- [ ] Gündoğumu/günbatımı edge-case testleri
-- [ ] Bilinen güzergahlarda canlı deneme, gerçeklikle karşılaştırma
-- [ ] Cache ile hesap süresini düşür
+- [x] **Gündoğumu/günbatımı edge-case testleri** (12 test): ufukta güneş,
+      horizontality tepe noktası, ön/arka koni sınırları, doğuş/batış yönleri,
+      yaz/kış gün uzunluğu, DST yok, yolculuk ufku geçerken kısmi güneş,
+      derin gece uyarısız, alçak güneş uyarısı doğuşta var öğlen yok.
+- [x] Cache ile hesap süresini düşür (bellek + disk, Faz 2)
+- [ ] **Bilinen güzergahlarda canlı deneme** — gerçek bir yolculukta öneriyi
+      doğrula (algoritma gerçekten tutuyor mu?). Bu adım sahada yapılmalı.
 
 ## 5. V2 Özellikleri
 - **Zaman seçici:** "Yarın 14:00" sorgusu (backend zaten destekliyor).

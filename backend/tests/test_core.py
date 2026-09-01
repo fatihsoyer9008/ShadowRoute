@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -289,3 +289,127 @@ def test_burulas_disk_cache_and_offline_fallback(tmp_path, monkeypatch):
 
     monkeypatch.setattr(burulas, "_post", boom)
     assert burulas.route_stops(9999) == a
+
+
+# ======================================================================
+#  Faz 4 — gündoğumu / günbatımı sınır durumları
+# ======================================================================
+BURSA = (40.19, 29.06)
+# Kuzey-güney düz test hattı (~8.5 km): kuzeye giderken doğu güneşi sağdan.
+NS_LINE = [(40.16, 29.06), (40.20, 29.06), (40.24, 29.06)]
+
+
+def _horizon_crossing(y: int, mo: int, d: int, *, rising: bool) -> datetime:
+    """Verilen gün için Bursa'da güneşin ufku geçtiği ilk anı (2 dk çözünürlük)."""
+    base = datetime(y, mo, d, tzinfo=TURKEY_TZ)
+    prev = None
+    for m in range(0, 24 * 60, 2):
+        alt = get_sun(base + timedelta(minutes=m), *BURSA).altitude_deg
+        if prev is not None:
+            if rising and prev <= 0 < alt:
+                return base + timedelta(minutes=m)
+            if not rising and prev > 0 >= alt:
+                return base + timedelta(minutes=m)
+        prev = alt
+    raise AssertionError("ufuk geçişi bulunamadı")
+
+
+# --- güneş konumu sınırda ---------------------------------------------
+def test_sun_exactly_at_horizon_counts_as_down():
+    assert not SunPosition(azimuth_deg=90, altitude_deg=0.0).is_up
+    assert SunPosition(azimuth_deg=90, altitude_deg=0.0).horizontality == 0.0
+    side, lat, fro = _classify(0.0, SunPosition(azimuth_deg=90, altitude_deg=0.0), False)
+    assert (side, lat, fro) == (Side.NONE, 0.0, 0.0)
+
+
+def test_horizontality_peaks_at_horizon():
+    just_up = SunPosition(azimuth_deg=90, altitude_deg=0.5)
+    overhead = SunPosition(azimuth_deg=90, altitude_deg=89.0)
+    assert just_up.horizontality > 0.999      # alçak güneş = tam yanal
+    assert overhead.horizontality < 0.02       # tepe güneşi = yanal yok
+
+
+def test_front_back_cone_boundaries():
+    # rel = güneş_azimut - bearing.  bearing 90 (doğu).
+    at_35 = _classify(90, SunPosition(azimuth_deg=90 + 35, altitude_deg=20), False)[0]
+    at_36 = _classify(90, SunPosition(azimuth_deg=90 + 36, altitude_deg=20), False)[0]
+    at_145 = _classify(90, SunPosition(azimuth_deg=90 + 145, altitude_deg=20), False)[0]
+    at_144 = _classify(90, SunPosition(azimuth_deg=90 + 144, altitude_deg=20), False)[0]
+    assert at_35 is Side.FRONT and at_36 is Side.RIGHT
+    assert at_145 is Side.BACK and at_144 is Side.RIGHT
+
+
+# --- suncalc: doğuş/batış yönleri ------------------------------------
+def test_sunrise_sun_is_in_the_east():
+    rise = _horizon_crossing(2026, 3, 20, rising=True)
+    sp = get_sun(rise + timedelta(minutes=20), *BURSA)
+    assert 0 < sp.altitude_deg < 8                 # alçak
+    assert 60 < sp.azimuth_deg < 120               # doğu
+
+
+def test_sunset_sun_is_in_the_west():
+    dusk = _horizon_crossing(2026, 3, 20, rising=False)
+    sp = get_sun(dusk - timedelta(minutes=20), *BURSA)
+    assert 0 < sp.altitude_deg < 8
+    assert 240 < sp.azimuth_deg < 300             # batı
+
+
+def test_summer_day_longer_than_winter():
+    def daylight_minutes(mo, d):
+        r = _horizon_crossing(2026, mo, d, rising=True)
+        s = _horizon_crossing(2026, mo, d, rising=False)
+        return (s - r).total_seconds() / 60
+
+    assert daylight_minutes(6, 21) > daylight_minutes(12, 21) + 240
+
+
+def test_turkey_timezone_has_no_dst():
+    for month in (1, 4, 7, 10):
+        off = TURKEY_TZ.utcoffset(datetime(2026, month, 15))
+        assert off == timedelta(hours=3)
+    # eski DST geçiş tarihinde de +03
+    assert get_sun(datetime(2026, 3, 29, 12, 0, tzinfo=TURKEY_TZ), *BURSA).altitude_deg > 40
+
+
+# --- analyze: yolculuk ufku geçerken -------------------------------
+def test_trip_starting_before_sunrise_has_partial_sun():
+    rise = _horizon_crossing(2026, 3, 20, rising=True)
+    dep = rise - timedelta(minutes=15)            # 15 dk karanlık + sonrası
+    res = analyze(NS_LINE, dep, avg_speed_kmh=12)  # yavaş -> yolculuk ~45 dk
+    assert 0.0 < res.sun_up_fraction < 1.0
+    dark = [s for s in res.segments if s.sun_altitude_deg <= 0]
+    lit = [s for s in res.segments if s.sun_altitude_deg > 0]
+    assert dark and lit
+    assert all(s.side is Side.NONE for s in dark)
+
+
+def test_trip_ending_after_sunset_has_partial_sun():
+    dusk = _horizon_crossing(2026, 3, 20, rising=False)
+    dep = dusk - timedelta(minutes=20)
+    res = analyze(NS_LINE, dep, avg_speed_kmh=12)
+    assert 0.0 < res.sun_up_fraction < 1.0
+
+
+def test_deep_night_trip_no_preference_no_low_sun_warning():
+    res = analyze(NS_LINE, datetime(2026, 1, 15, 2, 30, tzinfo=TURKEY_TZ),
+                  avg_speed_kmh=20)
+    assert res.recommended_side is Side.NONE
+    assert res.sun_up_fraction < 0.01
+    assert not any("alçak" in n.lower() for n in res.notes)
+
+
+def test_low_sun_warning_fires_just_after_sunrise_and_not_at_noon():
+    rise = _horizon_crossing(2026, 3, 20, rising=True)
+    # Kuzeye giden hat, doğuş sonrası -> güneş sağdan, alçak.
+    early = analyze(NS_LINE, rise + timedelta(minutes=10), avg_speed_kmh=20)
+    noon = analyze(NS_LINE, datetime(2026, 3, 20, 12, 30, tzinfo=TURKEY_TZ),
+                   avg_speed_kmh=20)
+    assert any("alçak" in n.lower() for n in early.notes)
+    assert not any("alçak" in n.lower() for n in noon.notes)
+
+
+def test_sunrise_northbound_sun_on_the_right():
+    rise = _horizon_crossing(2026, 3, 20, rising=True)
+    res = analyze(NS_LINE, rise + timedelta(minutes=25), avg_speed_kmh=20)
+    # Kuzeye gidiş + doğu güneşi -> sağdan; öneri SOL.
+    assert res.recommended_side is Side.LEFT
