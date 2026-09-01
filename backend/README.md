@@ -44,7 +44,12 @@ uvicorn app.main:app --reload
 
 `live-<hatNo>` id'leri Burulaş'tan anında çekilir: tünel bölgesi yok, halka
 ise dönüş noktası `auto_loop_split` ile tahmin edilir. Çekilen polyline/durak
-verisi `burulas` katmanında 12 saat cache'li.
+verisi `burulas` katmanında **bellek + disk** (`data/.cache/`, 12 saat)
+cache'li — sunucu yeniden başlasa da korunur.
+
+**Burulaş erişilemezse:** (1) diskteki bayat veri kullanılır; (2) hatNo elle
+ayarlı bir hatsa (GeoJSON `hat_no`) doğrudan o hat döner; (3) `/search` elle
+bakılan hatlar içinde arar.
 
 ## Canlı Burulaş verisi (Faz 0 — çalışıyor)
 
@@ -61,7 +66,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 27 test, ağ gerektirmez
+python -m pytest        # 29 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)

@@ -2,6 +2,7 @@
   "type": "Feature",
   "properties": {
     "id": "bursaray-m1",
+    "hat_no": 1531,
     "name": "BursaRay M1 (Emek — Arabayatağı)",
     "mode": "metro",
     "avg_speed_kmh": 33,
@@ -11,9 +12,16 @@
     },
     "source": "Burulaş API (hatNo=1531), çekildi 2026-09-01; yeraltı bilgisi tr.wikipedia \"BursaRay istasyonları listesi\"",
     "tunnel_zones": [
-      [40.250617, 28.957317, 380]
+      [
+        40.250617,
+        28.957317,
+        380
+      ]
     ],
-    "tunnel_zone_refs": ["bursaray-acemler", "bursaray-merkez"],
+    "tunnel_zone_refs": [
+      "bursaray-acemler",
+      "bursaray-merkez"
+    ],
     "_tunnel_note": "M1'e özel yeraltı: Korupark. Ortak (Acemler + merkez tüneli) data/tunnel_zones.json'dan. Toplam ~5.0 km / 17.6 km (~28%), 6/20 istasyon yeraltı ile tutarlı. Kaynak: tr.wikipedia.",
     "stops": [
       "Emek",

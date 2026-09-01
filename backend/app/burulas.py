@@ -18,15 +18,18 @@ Notlar:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import ssl
 import time
 import urllib.request
+from pathlib import Path
 from typing import Any, Callable
 
 from .core.geo import Point
 
 BASE_URL = "https://bursakartapi.abys-web.com"
+CACHE_DIR = Path(__file__).parent / "data" / ".cache"
 _HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json",
@@ -40,22 +43,57 @@ class BurulasError(RuntimeError):
     pass
 
 
-# --- basit bellek-içi TTL cache (rotalar nadiren değişir) ------------------
+# --- TTL cache: bellek + disk (rotalar nadiren değişir) -------------------
+# Disk katmanı sayesinde sunucu yeniden başlasa da cache'lenmiş hatlar
+# (ve Burulaş erişilemezse) yeniden çekmeye gerek kalmadan kullanılabilir.
 _CACHE: dict[tuple, tuple[float, Any]] = {}
 
-# hatNo -> {'code','name','mode'} — aramalar sırasında dolar; `live_route`
-# sadece hatNo bildiği için buradan hattın kodunu/adını çeker.
-_LINE_META: dict[int, dict] = {}
+
+def _disk_path(key: tuple) -> Path:
+    h = hashlib.sha1(repr(key).encode("utf-8")).hexdigest()[:16]
+    return CACHE_DIR / f"{key[0]}-{h}.json"
 
 
 def _cached(key: tuple, ttl_s: float, produce: Callable[[], Any]) -> Any:
     now = time.time()
+
     hit = _CACHE.get(key)
     if hit is not None and now - hit[0] < ttl_s:
         return hit[1]
-    value = produce()
+
+    fp = _disk_path(key)
+    disk = None
+    if fp.exists():
+        try:
+            disk = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            disk = None
+    if disk is not None and now - disk["ts"] < ttl_s:
+        _CACHE[key] = (disk["ts"], disk["value"])
+        return disk["value"]
+
+    try:
+        value = produce()
+    except BurulasError:
+        # Burulaş down -> bayat da olsa diskteki veriyi ver.
+        if disk is not None:
+            _CACHE[key] = (disk["ts"], disk["value"])
+            return disk["value"]
+        raise
+
     _CACHE[key] = (now, value)
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        fp.write_text(json.dumps({"ts": now, "value": value}, ensure_ascii=False),
+                      encoding="utf-8")
+    except OSError:
+        pass
     return value
+
+
+# hatNo -> {'code','name','mode'} — aramalar sırasında dolar; `live_route`
+# sadece hatNo bildiği için buradan hattın kodunu/adını çeker.
+_LINE_META: dict[int, dict] = {}
 
 
 def clear_cache() -> None:

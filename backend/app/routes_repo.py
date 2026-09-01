@@ -43,6 +43,7 @@ class Route:
     coords: list[Point]             # (lat, lon), forward yön
     stops: list[str]
     loop_split: int | None = None   # kapalı halka hatlarda dönüş noktasının indeksi
+    hat_no: int | None = None       # Burulaş hatNo (varsa) — canlı fallback için
 
     def path(self, direction: str) -> tuple[list[Point], list[TunnelZone]]:
         """direction: 'forward' | 'backward'.
@@ -88,6 +89,7 @@ def _load_one(fp: Path, shared_zones: dict[str, list[TunnelZone]]) -> Route:
         coords=coords,
         stops=props.get("stops", []),
         loop_split=props.get("loop_split"),
+        hat_no=props.get("hat_no"),
     )
 
 
@@ -99,6 +101,11 @@ def load_routes() -> dict[str, Route]:
     }
 
 
+def static_by_hat_no() -> dict[int, Route]:
+    """hatNo -> elle bakımı yapılan Route (varsa)."""
+    return {r.hat_no: r for r in load_routes().values() if r.hat_no is not None}
+
+
 # --- Burulaş'tan canlı çekilen rotalar (arama sonucu seçilenler) ----------
 LIVE_PREFIX = "live-"
 
@@ -107,8 +114,14 @@ def live_route(hat_no: int) -> Route:
     """Burulaş API'sinden bir hattı `Route` olarak kurar.
 
     Elle bakım yok: tünel bölgesi yok, halka ise dönüş noktası otomatik
-    tahmin edilir (`auto_loop_split`). Sonuçlar `burulas` katmanında cache'li.
+    tahmin edilir (`auto_loop_split`). Sonuçlar `burulas` katmanında (bellek +
+    disk) cache'li. Bu hatNo için elle ayarlı bir hat varsa (tünel bölgeleri,
+    isim) o tercih edilir — Burulaş erişilemezse de bu devreye girer.
     """
+    curated = static_by_hat_no().get(hat_no)
+    if curated is not None:
+        return curated
+
     meta = burulas.line_meta(hat_no) or {
         "code": str(hat_no), "name": str(hat_no), "mode": "bus"
     }

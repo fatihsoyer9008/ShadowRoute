@@ -247,3 +247,45 @@ def test_bus38_legs_face_opposite_sun_sides():
     b = analyze(r.path("backward")[0], dep, avg_speed_kmh=r.avg_speed_kmh)
     # Kuzey-güney hat: bir bacak sola, diğeri sağa oturt demeli.
     assert {f.recommended_side, b.recommended_side} == {Side.LEFT, Side.RIGHT}
+
+
+# --- canlı hat çözümleme: statik fallback + cache ----------------------
+def test_live_route_prefers_curated_by_hat_no():
+    # M1'in hatNo'su 1531; canlı istenince elle ayarlı hat (tünel bölgeleriyle)
+    # dönmeli — ağ gerektirmez.
+    from app.routes_repo import live_route
+
+    r = live_route(1531)
+    assert r.id == "bursaray-m1"
+    assert len(r.tunnel_zones) == 9
+
+
+def test_burulas_disk_cache_and_offline_fallback(tmp_path, monkeypatch):
+    from app import burulas
+
+    monkeypatch.setattr(burulas, "CACHE_DIR", tmp_path / "cache")
+    burulas.clear_cache()
+
+    calls = {"n": 0}
+
+    def fake_post(path, body):
+        calls["n"] += 1
+        return [{"sequence": 1, "stopName": "A", "direction": "R"},
+                {"sequence": 2, "stopName": "B", "direction": "R"}]
+
+    monkeypatch.setattr(burulas, "_post", fake_post)
+
+    a = burulas.route_stops(9999)
+    assert calls["n"] == 1
+    burulas.clear_cache()                 # bellek temiz, disk dolu
+    b = burulas.route_stops(9999)
+    assert calls["n"] == 1 and a == b     # diskten geldi, yeni istek yok
+
+    # Burulaş erişilemez -> bayat disk verisi
+    burulas.clear_cache()
+
+    def boom(path, body):
+        raise burulas.BurulasError("down")
+
+    monkeypatch.setattr(burulas, "_post", boom)
+    assert burulas.route_stops(9999) == a

@@ -2,6 +2,7 @@
   "type": "Feature",
   "properties": {
     "id": "bursaray-m2",
+    "hat_no": 1519,
     "name": "BursaRay M2 (Üniversite — Kestel)",
     "mode": "metro",
     "avg_speed_kmh": 34,

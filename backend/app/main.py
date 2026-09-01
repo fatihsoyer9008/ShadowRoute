@@ -58,14 +58,25 @@ def list_routes():
     return [_summary(r) for r in STATIC_ROUTES.values()]
 
 
+def _curated_matches(q: str) -> list[dict]:
+    ql = q.strip().lower()
+    hits = []
+    for r in STATIC_ROUTES.values():
+        if ql in r.name.lower() or (r.hat_no and ql == str(r.hat_no)):
+            hits.append({"id": r.id, "code": r.name.split(" ")[0],
+                         "name": r.name, "mode": r.mode})
+    return hits
+
+
 @app.get("/search")
 def search_lines(q: str = Query(..., min_length=1, description="Hat kodu ya da adı")):
     """Burulaş'ta hat arar. Sonuç id'leri 'live-<hatNo>' — /routes/{id}/shadow
-    ile doğrudan kullanılabilir (tünel bölgesi yok, halka ise otomatik bölünür)."""
+    ile doğrudan kullanılabilir (tünel bölgesi yok, halka ise otomatik bölünür).
+    Burulaş erişilemezse elle bakımı yapılan hatlar arasında arar."""
     try:
         lines = burulas.search_lines(q)
-    except burulas.BurulasError as e:
-        raise HTTPException(502, f"Burulaş araması başarısız: {e}") from e
+    except burulas.BurulasError:
+        return _curated_matches(q)
     return [
         {"id": f"{LIVE_PREFIX}{l['hat_no']}", "code": l["code"],
          "name": l["name"], "mode": l["mode"]}

@@ -2,6 +2,7 @@
   "type": "Feature",
   "properties": {
     "id": "bus-4g",
+    "hat_no": 1121,
     "name": "4G — Üniversite / Görükle",
     "mode": "bus",
     "avg_speed_kmh": 20,

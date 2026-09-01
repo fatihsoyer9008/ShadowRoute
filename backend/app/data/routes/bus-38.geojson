@@ -2,6 +2,7 @@
   "type": "Feature",
   "properties": {
     "id": "bus-38",
+    "hat_no": 1012,
     "name": "38 — Terminal / Heykel",
     "mode": "bus",
     "avg_speed_kmh": 22,

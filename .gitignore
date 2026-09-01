@@ -5,3 +5,6 @@ __pycache__/
 .env
 *.egg-info/
 .DS_Store
+
+# Burulaş yanıt cache'i (runtime'da dolar)
+backend/app/data/.cache/

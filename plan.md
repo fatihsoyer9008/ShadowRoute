@@ -55,7 +55,7 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
   - [x] ön cam / arka cam / alçak güneş uyarıları
   - [x] yolculuk boyunca güneşi ilerletme (ortalama hız)
 - [x] `scripts/poc.py` — terminal demo
-- [x] pytest testleri (19)
+- [x] pytest testleri (29)
 
 ### Faz 2 — Burulaş entegrasyonu
 - [x] `app/burulas.py` — API istemcisi (search / routecoordinate / routestat)
@@ -76,8 +76,11 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
       "Heykel yönü / Terminal yönü" olarak ikiye bölündü (yoksa ~%50/50 çıkıyordu)
 - [x] **4G hattı gerçek veriyle** (hatNo 1121) — kampüs–Görükle çevirici halka;
       `loop_split` Görükle ucunda, "Görükle yönü / Üniversite yönü"
-- [ ] Basit cache (dosya/SQLite/Redis) — rotalar nadiren değişir
-- [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
+- [x] **Cache: bellek + disk** (`burulas._cached` → `data/.cache/*.json`,
+      polyline/durak 12 sa, arama 1 sa). Sunucu yeniden başlasa da kalıcı.
+- [x] **API çökerse fallback:** (a) diskteki bayat veri, (b) hatNo elle ayarlı
+      bir hatsa o hat (tünel bölgeleriyle), (c) `/search` elle bakılan hatlarda
+      arar. GeoJSON'lara `hat_no` alanı eklendi.
 
 ### Faz 3 — Mobil (Flutter)  🚧 MVP iskeleti hazır (`mobile/`)
 - [x] Sade UI: hat dropdown + yön SegmentedButton + zaman seçici + sonuç kartı
