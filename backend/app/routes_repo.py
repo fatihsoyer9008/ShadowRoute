@@ -9,7 +9,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from .core.geo import Point
+from . import burulas
+from .core.geo import Point, auto_loop_split
 
 DATA_DIR = Path(__file__).parent / "data"
 ROUTES_DIR = DATA_DIR / "routes"
@@ -96,3 +97,62 @@ def load_routes() -> dict[str, Route]:
         r.id: r
         for r in (_load_one(fp, shared) for fp in sorted(ROUTES_DIR.glob("*.geojson")))
     }
+
+
+# --- Burulaş'tan canlı çekilen rotalar (arama sonucu seçilenler) ----------
+LIVE_PREFIX = "live-"
+
+
+def live_route(hat_no: int) -> Route:
+    """Burulaş API'sinden bir hattı `Route` olarak kurar.
+
+    Elle bakım yok: tünel bölgesi yok, halka ise dönüş noktası otomatik
+    tahmin edilir (`auto_loop_split`). Sonuçlar `burulas` katmanında cache'li.
+    """
+    meta = burulas.line_meta(hat_no) or {
+        "code": str(hat_no), "name": str(hat_no), "mode": "bus"
+    }
+
+    paths = burulas.directional_paths(hat_no)
+    coords = paths["forward"]
+    stops = burulas.stop_names(hat_no)
+
+    split = auto_loop_split(coords)
+    if not stops:
+        labels = {"forward": "Gidiş", "backward": "Dönüş"}
+    elif split is not None:
+        turn_i = round(split / max(len(coords) - 1, 1) * (len(stops) - 1))
+        turn_i = min(len(stops) - 1, max(0, turn_i))
+        labels = {"forward": f"{_short(stops[turn_i])} yönü",
+                  "backward": f"{_short(stops[0])} yönü"}
+    else:
+        labels = {"forward": f"{_short(stops[-1])} yönü",
+                  "backward": f"{_short(stops[0])} yönü"}
+
+    return Route(
+        id=f"{LIVE_PREFIX}{hat_no}",
+        name=f"{meta['code']} — {meta['name']}" if meta["name"] != meta["code"] else meta["code"],
+        mode=meta["mode"],
+        avg_speed_kmh=33.0 if meta["mode"] == "metro" else 20.0,
+        direction_labels=labels,
+        tunnel_zones=[],
+        coords=coords,
+        stops=stops,
+        loop_split=split,
+    )
+
+
+def _short(stop_name: str, max_words: int = 2) -> str:
+    """"HEYKEL ATATÜRK CD. PERON 1" -> "Heykel Atatürk" gibi kısalt."""
+    import re
+
+    n = re.sub(r"\s*\([^)]*\)\s*$", "", stop_name.strip())
+    n = re.sub(r"\s+(PERON\s*)?\d+$", "", n)
+    n = re.sub(r"\b(CD|CAD|MH|MAH|BLV|SK|SOK|İST|İSTASYONU|PERON)\.?\b", "", n, flags=re.I)
+    parts = []
+    for w in n.split():
+        if "." in w or any(c.isdigit() for c in w):
+            continue
+        parts.append(w[0].upper().replace("I", "İ")
+                     + w[1:].replace("I", "ı").replace("İ", "i").lower())
+    return " ".join(parts[:max_words]) or stop_name.title()

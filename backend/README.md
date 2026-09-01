@@ -37,8 +37,14 @@ uvicorn app.main:app --reload
 
 | Endpoint | Açıklama |
 |---|---|
-| `GET /routes` | Tanımlı hatlar |
+| `GET /routes` | Elle bakımı yapılan hatlar (tünel bölgeleri ayarlı) |
+| `GET /search?q=38` | Burulaş'ta hat arar → `[{id: "live-<hatNo>", code, name, mode}]` |
+| `GET /routes/{id}` | Hat detayı (yön etiketleri, duraklar) — statik ya da `live-*` |
 | `GET /routes/{id}/shadow?when=ISO&direction=forward\|backward` | Analiz. `when` boşsa Türkiye saatiyle şimdi. |
+
+`live-<hatNo>` id'leri Burulaş'tan anında çekilir: tünel bölgesi yok, halka
+ise dönüş noktası `auto_loop_split` ile tahmin edilir. Çekilen polyline/durak
+verisi `burulas` katmanında 12 saat cache'li.
 
 ## Canlı Burulaş verisi (Faz 0 — çalışıyor)
 
@@ -55,7 +61,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 25 test, ağ gerektirmez
+python -m pytest        # 27 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)

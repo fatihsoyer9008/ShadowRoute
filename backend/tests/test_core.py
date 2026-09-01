@@ -7,6 +7,7 @@ from datetime import datetime
 import pytest
 
 from app.core.geo import (
+    auto_loop_split,
     haversine_m,
     initial_bearing_deg,
     normalize_180,
@@ -214,6 +215,27 @@ def test_loop_route_splits_into_two_legs(route_id):
     assert fwd[-1] == bwd[0]
     assert fwd != list(reversed(bwd))
     assert len(fwd) + len(bwd) == len(r.coords) + 1
+
+
+def test_auto_loop_split():
+    # Düz hat -> None
+    line = [(40.19, 29.00), (40.19, 29.03), (40.19, 29.06), (40.19, 29.09)]
+    assert auto_loop_split(line) is None
+
+    # Kapalı halka: git-dön, uçlar aynı -> ortadaki en uzak nokta
+    loop = [(40.19, 29.00), (40.19, 29.02), (40.19, 29.05),  # en uzak (idx 2)
+            (40.19, 29.02), (40.19, 29.00001)]
+    assert auto_loop_split(loop) == 2
+
+
+def test_auto_loop_split_matches_curated_bus38():
+    from app.routes_repo import load_routes
+
+    coords = load_routes()["bus-38"].coords
+    auto = auto_loop_split(coords)
+    assert auto is not None
+    # Elle ayarlanan 230'a yakın olmalı (±%10).
+    assert abs(auto - 230) < len(coords) * 0.1
 
 
 def test_bus38_legs_face_opposite_sun_sides():

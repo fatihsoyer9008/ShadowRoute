@@ -132,3 +132,21 @@ def smooth_route(
 def point_in_zones(p: Point, zones: list[tuple[float, float, float]]) -> bool:
     """zones: (lat, lon, yarıçap_m) daireleri. p herhangi birinin içinde mi?"""
     return any(haversine_m(p, (zlat, zlon)) <= radius for zlat, zlon, radius in zones)
+
+
+def auto_loop_split(coords: list[Point], close_m: float = 350.0) -> int | None:
+    """Kapalı halka güzergahlarda dönüş noktasının indeksini tahmin eder.
+
+    Başlangıç ve bitiş `close_m` metreden yakınsa hat halkadır; dönüş noktası
+    olarak başlangıçtan en uzak koordinatın indeksi döner. Değilse None
+    (düz hat). Elle ayarlanmış `loop_split` varsa o tercih edilmeli."""
+    if len(coords) < 4:
+        return None
+    if haversine_m(coords[0], coords[-1]) > close_m:
+        return None
+    start = coords[0]
+    idx = max(range(1, len(coords) - 1), key=lambda i: haversine_m(coords[i], start))
+    # Uçlara çok yakın bir tepe gerçek bir halka dönüşü değildir.
+    if idx < len(coords) // 5 or idx > len(coords) * 4 // 5:
+        return None
+    return idx

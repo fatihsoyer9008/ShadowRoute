@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import json
 import ssl
+import time
 import urllib.request
-from typing import Any
+from typing import Any, Callable
 
 from .core.geo import Point
 
@@ -37,6 +38,28 @@ _TIMEOUT = 20
 
 class BurulasError(RuntimeError):
     pass
+
+
+# --- basit bellek-içi TTL cache (rotalar nadiren değişir) ------------------
+_CACHE: dict[tuple, tuple[float, Any]] = {}
+
+# hatNo -> {'code','name','mode'} — aramalar sırasında dolar; `live_route`
+# sadece hatNo bildiği için buradan hattın kodunu/adını çeker.
+_LINE_META: dict[int, dict] = {}
+
+
+def _cached(key: tuple, ttl_s: float, produce: Callable[[], Any]) -> Any:
+    now = time.time()
+    hit = _CACHE.get(key)
+    if hit is not None and now - hit[0] < ttl_s:
+        return hit[1]
+    value = produce()
+    _CACHE[key] = (now, value)
+    return value
+
+
+def clear_cache() -> None:
+    _CACHE.clear()
 
 
 def _post(path: str, body: dict[str, Any]) -> list[dict]:
@@ -66,16 +89,41 @@ def _insecure_context() -> ssl.SSLContext:
 
 
 def search(keyword: str) -> list[dict]:
-    """type='R' -> hat, type='S' -> durak."""
-    return _post("api/static/routeandstation", {"keyword": str(keyword)})
+    """type='R' -> hat, type='S' -> durak. 1 saat cache."""
+    kw = str(keyword).strip()
+    return _cached(("search", kw.lower()), 3600.0,
+                   lambda: _post("api/static/routeandstation", {"keyword": kw}))
 
 
 def route_coordinates(route_id: int | str) -> list[dict]:
-    return _post("api/static/routecoordinate", {"keyword": str(route_id)})
+    return _cached(("coord", str(route_id)), 12 * 3600.0,
+                   lambda: _post("api/static/routecoordinate", {"keyword": str(route_id)}))
 
 
 def route_stops(route_code: int | str) -> list[dict]:
-    return _post("api/static/routestat", {"routeCode": int(route_code)})
+    return _cached(("stops", int(route_code)), 12 * 3600.0,
+                   lambda: _post("api/static/routestat", {"routeCode": int(route_code)}))
+
+
+def search_lines(keyword: str) -> list[dict]:
+    """Arama sonucundan yalnız hatları normalize eder:
+    [{'hat_no': 1012, 'code': '38', 'name': '38', 'mode': 'bus'}, ...]"""
+    out = []
+    for r in search(keyword):
+        if r.get("type") != "R" or "hatNo" not in r:
+            continue
+        code = str(r.get("kod", r["hatNo"]))
+        mode = "metro" if code[:1].upper() in ("M", "T") else "bus"
+        meta = {"hat_no": int(r["hatNo"]), "code": code,
+                "name": str(r.get("aciklama") or code), "mode": mode}
+        _LINE_META[meta["hat_no"]] = {k: meta[k] for k in ("code", "name", "mode")}
+        out.append(meta)
+    return out
+
+
+def line_meta(hat_no: int) -> dict | None:
+    """Daha önce bir aramada görülen hattın kodu/adı/modu. Görülmediyse None."""
+    return _LINE_META.get(int(hat_no))
 
 
 def find_route(code: str) -> dict:
@@ -85,6 +133,17 @@ def find_route(code: str) -> dict:
         raise BurulasError(f"'{code}' için hat bulunamadı")
     exact = [r for r in hits if str(r.get("kod", "")).lower() == code.lower()]
     return exact[0] if exact else hits[0]
+
+
+def stop_names(route_code: int | str, direction: str = "G") -> list[str]:
+    rows = [s for s in route_stops(route_code) if s.get("direction") in (direction, "R")]
+    rows.sort(key=lambda s: int(s["sequence"]))
+    seen: list[str] = []
+    for s in rows:
+        nm = str(s.get("stopName", "")).strip()
+        if nm and (not seen or seen[-1] != nm):
+            seen.append(nm)
+    return seen
 
 
 def _coord(p: dict) -> Point:

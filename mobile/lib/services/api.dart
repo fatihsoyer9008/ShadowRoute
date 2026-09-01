@@ -32,6 +32,28 @@ class Api {
         .toList();
   }
 
+  /// Burulaş'ta hat arar. Boş liste = eşleşme yok.
+  Future<List<RouteHit>> search(String query) async {
+    final q = query.trim();
+    if (q.isEmpty) return const [];
+    final data = await _getJson('/search', query: {'q': q});
+    if (data is! List) {
+      throw const ApiException('Beklenmeyen sunucu cevabı (arama).');
+    }
+    return data
+        .map((e) => RouteHit.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// Bir hattın yön/durak detayı (statik ya da `live-<hatNo>`).
+  Future<RouteSummary> routeDetail(String id) async {
+    final data = await _getJson('/routes/$id');
+    if (data is! Map) {
+      throw const ApiException('Beklenmeyen sunucu cevabı (hat detayı).');
+    }
+    return RouteSummary.fromJson(data.cast<String, dynamic>());
+  }
+
   Future<ShadowAnalysis> shadow(
     String routeId, {
     required String direction,

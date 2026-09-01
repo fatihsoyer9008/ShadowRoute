@@ -1,6 +1,6 @@
 """Gölge Rota — ince backend (FastAPI).
 
-Sorumluluk: statik/ileride Burulaş kaynaklı rota verisini sunmak ve güneş-tarafı
+Sorumluluk: statik + Burulaş kaynaklı rota verisini sunmak ve güneş-tarafı
 analizini çalıştırmak. Ağır iş `app.core` içinde; burası sadece HTTP kabuğu.
 """
 from __future__ import annotations
@@ -10,11 +10,12 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import burulas
 from .core.shadow import analyze
 from .core.sun import TURKEY_TZ
-from .routes_repo import load_routes
+from .routes_repo import LIVE_PREFIX, Route, live_route, load_routes
 
-app = FastAPI(title="Gölge Rota API", version="0.1.0")
+app = FastAPI(title="Gölge Rota API", version="0.2.0")
 
 # Geliştirme kolaylığı: Flutter web / farklı port'tan erişime izin ver.
 # Prod'da bunu gerçek origin listesiyle daralt.
@@ -25,21 +26,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ROUTES = load_routes()
+STATIC_ROUTES = load_routes()
+
+
+def _resolve(route_id: str) -> Route:
+    """Statik id ('bursaray-m1') ya da canlı id ('live-1012') -> Route."""
+    if route_id in STATIC_ROUTES:
+        return STATIC_ROUTES[route_id]
+    if route_id.startswith(LIVE_PREFIX):
+        try:
+            return live_route(int(route_id[len(LIVE_PREFIX):]))
+        except (ValueError, burulas.BurulasError) as e:
+            raise HTTPException(502, f"Burulaş'tan rota alınamadı: {e}") from e
+    raise HTTPException(404, f"Bilinmeyen rota: {route_id}")
+
+
+def _summary(r: Route) -> dict:
+    return {
+        "id": r.id,
+        "name": r.name,
+        "mode": r.mode,
+        "directions": r.direction_labels,
+        "is_loop": r.loop_split is not None,
+        "stops": r.stops,
+    }
 
 
 @app.get("/routes")
 def list_routes():
+    """Elle bakımı yapılan, tünel bölgeleri ayarlı hatlar."""
+    return [_summary(r) for r in STATIC_ROUTES.values()]
+
+
+@app.get("/search")
+def search_lines(q: str = Query(..., min_length=1, description="Hat kodu ya da adı")):
+    """Burulaş'ta hat arar. Sonuç id'leri 'live-<hatNo>' — /routes/{id}/shadow
+    ile doğrudan kullanılabilir (tünel bölgesi yok, halka ise otomatik bölünür)."""
+    try:
+        lines = burulas.search_lines(q)
+    except burulas.BurulasError as e:
+        raise HTTPException(502, f"Burulaş araması başarısız: {e}") from e
     return [
-        {
-            "id": r.id,
-            "name": r.name,
-            "mode": r.mode,
-            "directions": r.direction_labels,
-            "stops": r.stops,
-        }
-        for r in ROUTES.values()
+        {"id": f"{LIVE_PREFIX}{l['hat_no']}", "code": l["code"],
+         "name": l["name"], "mode": l["mode"]}
+        for l in lines
     ]
+
+
+@app.get("/routes/{route_id}")
+def route_detail(route_id: str):
+    return _summary(_resolve(route_id))
 
 
 @app.get("/routes/{route_id}/shadow")
@@ -50,9 +86,7 @@ def route_shadow(
         None, description="ISO 8601 kalkış zamanı. Boşsa: Türkiye saatiyle şimdi."
     ),
 ):
-    route = ROUTES.get(route_id)
-    if route is None:
-        raise HTTPException(404, f"Bilinmeyen rota: {route_id}")
+    route = _resolve(route_id)
 
     departure = when or datetime.now(TURKEY_TZ)
     if departure.tzinfo is None:
@@ -70,6 +104,9 @@ def route_shadow(
     payload["route"] = {
         "id": route.id,
         "name": route.name,
+        "mode": route.mode,
+        "is_loop": route.loop_split is not None,
+        "curated": route.id in STATIC_ROUTES,
         "direction": direction,
         "direction_label": route.direction_labels.get(direction, direction),
     }
