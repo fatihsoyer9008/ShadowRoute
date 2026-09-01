@@ -74,6 +74,8 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] `SegmentAnalysis.mid` + API'de segment `lat/lon` (harita özelliği için hazır)
 - [x] **38 hattı gerçek veriyle** (hatNo 1012) — kapalı halka; `loop_split` ile
       "Heykel yönü / Terminal yönü" olarak ikiye bölündü (yoksa ~%50/50 çıkıyordu)
+- [x] **4G hattı gerçek veriyle** (hatNo 1121) — kampüs–Görükle çevirici halka;
+      `loop_split` Görükle ucunda, "Görükle yönü / Üniversite yönü"
 - [ ] Basit cache (dosya/SQLite/Redis) — rotalar nadiren değişir
 - [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
 

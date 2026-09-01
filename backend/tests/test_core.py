@@ -199,23 +199,29 @@ def test_analyze_all_night_is_no_preference():
     assert res.recommended_side is Side.NONE
 
 
-# --- kapalı halka hat (bus 38) -----------------------------------------
-def test_loop_route_splits_into_two_legs():
+# --- kapalı halka hatlar (38, 4G) -------------------------------------
+@pytest.mark.parametrize("route_id", ["bus-38", "bus-4g"])
+def test_loop_route_splits_into_two_legs(route_id):
     from app.routes_repo import load_routes
 
-    r = load_routes()["bus-38"]
+    r = load_routes()[route_id]
     assert r.loop_split is not None
 
     fwd, _ = r.path("forward")
     bwd, _ = r.path("backward")
 
-    # İki bacak ayrı yollar (biri diğerinin tersi DEĞİL) ve dönüş noktasında birleşiyor.
+    # İki bacak ayrı yollar (biri diğerinin tersi DEĞİL), dönüş noktasında birleşiyor.
     assert fwd[-1] == bwd[0]
     assert fwd != list(reversed(bwd))
     assert len(fwd) + len(bwd) == len(r.coords) + 1
 
-    # Kuzey-güney bir hat: sabah güneşi iki bacakta zıt taraflara düşmeli.
-    dep = datetime(2026, 6, 21, 8, 0, tzinfo=TURKEY_TZ)
-    f = analyze(fwd, dep, avg_speed_kmh=r.avg_speed_kmh)
-    b = analyze(bwd, dep, avg_speed_kmh=r.avg_speed_kmh)
+
+def test_bus38_legs_face_opposite_sun_sides():
+    from app.routes_repo import load_routes
+
+    r = load_routes()["bus-38"]
+    dep = datetime(2026, 6, 21, 8, 0, tzinfo=TURKEY_TZ)  # sabah, güneş doğuda
+    f = analyze(r.path("forward")[0], dep, avg_speed_kmh=r.avg_speed_kmh)
+    b = analyze(r.path("backward")[0], dep, avg_speed_kmh=r.avg_speed_kmh)
+    # Kuzey-güney hat: bir bacak sola, diğeri sağa oturt demeli.
     assert {f.recommended_side, b.recommended_side} == {Side.LEFT, Side.RIGHT}

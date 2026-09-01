@@ -55,7 +55,7 @@ API değil — sözleşme kırılabilir, o yüzden statik GeoJSON fallback korun
 ## Testler
 
 ```bash
-python -m pytest        # 23 test, ağ gerektirmez
+python -m pytest        # 25 test, ağ gerektirmez
 ```
 
 ## Mimari (ince backend)
@@ -117,4 +117,5 @@ kullanabilir; `routes_repo` ikisini birleştirir.
 - Cam rengi / araç tipi hesaba katılmaz.
 - Yolcunun tüm hattı bindiği varsayılır ("nereden nereye" V2).
 - Tüm hatlar **gerçek Burulaş verisi**: `bursaray-m1` (1531), `bursaray-m2`
-  (1519), `bus-38` (1012). Yeraltı bölgeleri tr.wikipedia istasyon listesinden.
+  (1519), `bus-38` (1012), `bus-4g` (1121). Yeraltı bölgeleri tr.wikipedia
+  istasyon listesinden. 38 ve 4G kapalı halka → `loop_split`.
