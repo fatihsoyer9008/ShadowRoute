@@ -93,7 +93,10 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 - [x] **Güneşli segment haritası** — `RouteSunMap` (CustomPainter, alt harita
       yok): rota şekli parça parça güneş tarafına göre renkli; tünel bölümü gri
       görünüyor. En-boy oranı rotanın coğrafyasına uyarlanıyor.
-- [ ] `API_BASE` prod adresi + HTTPS (şimdilik dev cleartext, LAN IP ile test)
+- [x] **Prod backend + HTTPS** — Hetzner (116.202.14.23), Docker + Caddy:
+      **https://golgerota.116-202-14-23.sslip.io** (Let's Encrypt otomatik).
+      `deploy/` altında Dockerfile + compose. `config.dart` varsayılanı bu adres.
+      Güncelleme: sunucuda `git pull && docker compose -f deploy/... up -d --build`.
 
 ### Faz 4 — Test & saha
 - [ ] Gündoğumu/günbatımı edge-case testleri

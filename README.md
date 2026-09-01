@@ -5,7 +5,10 @@ hesaplayıp "hangi koltuğa otur" önerisi veren asistan.
 
 - [`plan.md`](plan.md) — proje planı ve fazlar
 - [`backend/`](backend/) — çekirdek algoritma + FastAPI + Burulaş istemcisi
-- [`mobile/`](mobile/) — Flutter MVP (hat seç → yön → gölge koltuk önerisi)
+- [`mobile/`](mobile/) — Flutter MVP (hat ara/seç → yön → gölge koltuk önerisi)
+- [`deploy/`](deploy/) — Hetzner (Docker + Caddy) deploy yapılandırması
+
+**Canlı API:** https://golgerota.116-202-14-23.sslip.io/routes
 
 ## Hızlı başlangıç
 
@@ -21,8 +24,8 @@ uvicorn app.main:app --reload                        # API :8000
 ```
 
 ```bash
-# Mobil (backend :8000 ayaktayken)
+# Mobil — varsayılan olarak canlı API'yi kullanır
 cd mobile
-flutter run --dart-define=API_BASE=http://localhost:8000   # web/masaüstü
-# Android emülatör: API_BASE=http://10.0.2.2:8000 (varsayılan)
+flutter run                                                # canlı backend
+flutter run --dart-define=API_BASE=http://localhost:8000   # yerel backend (web/masaüstü)
 ```
