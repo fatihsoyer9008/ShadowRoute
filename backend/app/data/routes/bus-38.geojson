@@ -6,7 +6,7 @@
     "mode": "bus",
     "avg_speed_kmh": 18,
     "direction_labels": { "forward": "Üniversite yönü", "backward": "Kent Meydanı yönü" },
-    "tunnel_segments": [],
+    "tunnel_zones": [],
     "source": "YAKLAŞIK / SENTETİK koordinatlar — PoC için.",
     "stops": [
       "Kent Meydanı", "Heykel", "Setbaşı", "Dörtçelik",

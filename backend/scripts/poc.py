@@ -30,18 +30,22 @@ BAR = {Side.LEFT: "<< SOL ", Side.RIGHT: " SAG >>", Side.FRONT: "^^ ON  ",
 
 def run(route_id: str, departure: datetime, direction: str) -> None:
     route = load_routes()[route_id]
-    coords, tunnels = route.path(direction)
-    res = analyze(coords, departure, avg_speed_kmh=route.avg_speed_kmh, tunnel_segments=tunnels)
+    coords, tunnel_zones = route.path(direction)
+    res = analyze(coords, departure, avg_speed_kmh=route.avg_speed_kmh,
+                  tunnel_zones=tunnel_zones)
 
     print("=" * 78)
     print(f"{route.name}   [{route.direction_labels.get(direction, direction)}]")
     print(f"Kalkış: {departure:%Y-%m-%d %H:%M} (+03)   "
           f"Süre ~{res.trip_duration_min:.0f} dk   Uzunluk {res.total_length_m/1000:.1f} km")
+    print(f"Yumuşatma sonrası {len(res.segments)} segment "
+          f"(~{res.total_length_m / max(len(res.segments), 1):.0f} m/segment)")
     print("-" * 78)
-    print(f"{'#':>2}  {'yön°':>5}  {'saat':>5}  {'g.azimut':>8}  {'g.yük':>6}  taraf")
-    for s in res.segments:
+    print(f"{'#':>4}  {'yön°':>5}  {'saat':>5}  {'g.azimut':>8}  {'g.yük':>6}  taraf")
+    stride = max(1, len(res.segments) // 30)
+    for s in res.segments[::stride]:
         t = s.when.strftime("%H:%M")
-        print(f"{s.index:>2}  {s.bearing_deg:>5.0f}  {t:>5}  {s.sun_azimuth_deg:>8.0f}  "
+        print(f"{s.index:>4}  {s.bearing_deg:>5.0f}  {t:>5}  {s.sun_azimuth_deg:>8.0f}  "
               f"{s.sun_altitude_deg:>6.1f}  {BAR[s.side]}"
               f"{'  (tünel)' if s.in_tunnel else ''}")
     print("-" * 78)

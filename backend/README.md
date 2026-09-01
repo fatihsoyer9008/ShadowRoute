@@ -74,7 +74,11 @@ scripts/poc.py  terminal demo
 
 ## Algoritma özeti
 
-1. Rota ardışık GPS noktalarından segmentlere bölünür.
+0. **Polyline yumuşatma** (`geo.smooth_route`): ham Burulaş güzergahı önce
+   Douglas–Peucker (`epsilon ≈ 25 m`) ile titremeden arındırılır, sonra ~40 m
+   eşit aralıklarla yeniden örneklenir. Böylece GPS logunun yoğun/seyrek
+   noktalaması segment ağırlıklarını bozmaz, gidiş açıları oynamaz.
+1. Rota ardışık noktalardan segmentlere bölünür.
 2. Her segmentin **gidiş yönü** (pusula açısı) hesaplanır.
 3. Ortalama hızla yolcunun o segmente **ne zaman** geleceği bulunur; o an + segment
    orta noktası için **güneş azimut & yüksekliği** alınır (suncalc).
@@ -82,9 +86,17 @@ scripts/poc.py  terminal demo
    - `|rel| ≤ 35°` ⇒ ÖN, `|rel| ≥ 145°` ⇒ ARKA, aksi halde SOL/SAĞ.
 5. **Yatay şiddet** `cos(altitude)` ile ağırlıklandırılır → öğlen yüksek güneşte
    sağ/sol farkı küçülür. Güneş yüksekliği ≤ 0 ⇒ etki 0 (gece).
-6. Tünel/yeraltı segmentleri (GeoJSON `tunnel_segments`) → etki 0.
+6. **Tünel/yeraltı bölgeleri** GeoJSON `tunnel_zones` = `(lat, lon, yarıçap_m)`
+   daireleri. Segment orta noktası bir dairenin içindeyse etki 0. Coğrafi
+   olduğu için yumuşatmadan ve gidiş/dönüş yönünden etkilenmez.
 7. Segment uzunluğu × yatay şiddet toplanır; sol vs sağ kıyaslanıp **az güneş
    alan taraf** önerilir. Ön camdan güneş için "kaçış yok" uyarısı eklenir.
+
+> Not: Gerçekten çok dönen bir hat (ör. 38 kampüs turu) için sol/sağ ~%50/50
+> çıkabilir — bu doğru cevaptır, o hatta net bir gölge tarafı yoktur.
+
+`analyze()` yumuşatma parametreleri: `simplify_epsilon_m` (0 = kapalı),
+`resample_step_m` (None = kapalı), `tunnel_zones`.
 
 ### Bilinçli basitleştirmeler (V1)
 

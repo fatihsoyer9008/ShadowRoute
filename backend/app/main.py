@@ -58,12 +58,12 @@ def route_shadow(
     if departure.tzinfo is None:
         departure = departure.replace(tzinfo=TURKEY_TZ)
 
-    coords, tunnels = route.path(direction)
+    coords, tunnel_zones = route.path(direction)
     result = analyze(
         coords,
         departure,
         avg_speed_kmh=route.avg_speed_kmh,
-        tunnel_segments=tunnels,
+        tunnel_zones=tunnel_zones,
     )
 
     payload = result.to_dict()

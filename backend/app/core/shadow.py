@@ -9,9 +9,12 @@ Fikir:
   5. Segment uzunluğu ve ışığın yatay şiddetiyle ağırlıklandırıp topla.
   6. Yanal (sol/sağ) maruz kalmayı kıyasla -> öneri.
 
+Ham Burulaş polyline'ları gürültülü (rotari/sapak titremesi) -> analiz öncesi
+`smooth_route` ile temizlenir (RDP + eşit aralıklı yeniden örnekleme).
+
 Bilinçli basitleştirmeler (README'de not düşülüyor):
   - Bina/ağaç gölgeleri modellenmiyor (şehir içinde gerçek etkiyi azaltır).
-  - Tünel/yeraltı segmentleri elle işaretleniyor (güneş etkisi = 0).
+  - Tünel/yeraltı bölgeleri elle işaretleniyor (coğrafi daire; güneş etkisi = 0).
   - Cam rengi / otobüs tipi hesaba katılmıyor.
 """
 from __future__ import annotations
@@ -21,7 +24,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 
-from .geo import Point, haversine_m, initial_bearing_deg, midpoint, normalize_180
+from .geo import (
+    Point,
+    haversine_m,
+    initial_bearing_deg,
+    midpoint,
+    normalize_180,
+    point_in_zones,
+    smooth_route,
+)
 from .sun import SunPosition, get_sun
 
 # |güneş - gidiş yönü| bu koninin içindeyse ön/arka camdan sayılır (yan koltuk kurtarmaz).
@@ -139,24 +150,36 @@ def analyze(
     departure: datetime,
     *,
     avg_speed_kmh: float = 18.0,
-    tunnel_segments: list[tuple[int, int]] | None = None,
+    tunnel_zones: list[tuple[float, float, float]] | None = None,
+    simplify_epsilon_m: float = 25.0,
+    resample_step_m: float | None = 40.0,
 ) -> RouteShadow:
     """
-    coords          : (lat, lon) noktaları, rota sırasıyla.
-    departure       : timezone-aware kalkış zamanı.
-    avg_speed_kmh   : güneşi yolculuk boyunca ilerletmek için kaba hız (metro > otobüs).
-    tunnel_segments : güneş görmeyen segment aralıkları, kapsayıcı indeks: [(5, 7), ...]
-                      = 5., 6., 7. segmentler yeraltında.
+    coords             : (lat, lon) noktaları, rota sırasıyla (ham polyline olabilir).
+    departure          : timezone-aware kalkış zamanı.
+    avg_speed_kmh      : güneşi yolculuk boyunca ilerletmek için kaba hız.
+    tunnel_zones       : güneş görmeyen bölgeler, (lat, lon, yarıçap_m) daireleri.
+                         Segment orta noktası bir dairenin içindeyse etki = 0.
+    simplify_epsilon_m : RDP eşiği; GPS titremesini temizler (0 = kapalı).
+    resample_step_m    : eşit aralıklı yeniden örnekleme adımı (None = kapalı).
     """
     if len(coords) < 2:
         raise ValueError("En az 2 nokta gerekli")
     if departure.tzinfo is None:
         raise ValueError("`departure` timezone-aware olmalı")
 
-    tunnels = tunnel_segments or []
+    coords = smooth_route(
+        coords,
+        simplify_epsilon_m=simplify_epsilon_m,
+        resample_step_m=resample_step_m,
+    )
+    if len(coords) < 2:
+        raise ValueError("Yumuşatma sonrası yeterli nokta kalmadı")
 
-    def in_tunnel(seg_idx: int) -> bool:
-        return any(lo <= seg_idx <= hi for lo, hi in tunnels)
+    zones = tunnel_zones or []
+
+    def in_tunnel(mid: Point) -> bool:
+        return point_in_zones(mid, zones)
 
     speed_ms = max(avg_speed_kmh, 1.0) * 1000.0 / 3600.0
     cum_time_s = 0.0
@@ -177,9 +200,9 @@ def analyze(
         cum_time_s += length / speed_ms
 
         bearing = initial_bearing_deg(a, b)
-        mlat, mlon = midpoint(a, b)
-        sun = get_sun(mid_time, mlat, mlon)
-        tunnel = in_tunnel(i)
+        mid = midpoint(a, b)
+        sun = get_sun(mid_time, mid[0], mid[1])
+        tunnel = in_tunnel(mid)
         side, lateral, frontal = _classify(bearing, sun, tunnel)
 
         segments.append(

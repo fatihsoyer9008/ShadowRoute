@@ -81,7 +81,7 @@ def main(argv: list[str]) -> None:
                 "mode": "metro" if speed >= 30 else "bus",
                 "avg_speed_kmh": speed,
                 "direction_labels": {"forward": "Gidiş", "backward": "Dönüş"},
-                "tunnel_segments": [],
+                "tunnel_zones": [],
                 "source": f"Burulaş API (hatNo={hat_no}), çekildi {datetime.now(TURKEY_TZ):%Y-%m-%d}",
                 "stops": [s.get("stopName") for s in stops],
             },

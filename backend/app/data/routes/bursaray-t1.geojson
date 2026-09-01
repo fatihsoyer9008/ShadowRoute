@@ -6,7 +6,11 @@
     "mode": "metro",
     "avg_speed_kmh": 32,
     "direction_labels": { "forward": "Kestel yönü", "backward": "Emek yönü" },
-    "tunnel_segments": [[3, 4]],
+    "tunnel_zones": [
+      [40.1985, 29.0325, 1200],
+      [40.1885, 29.0525, 1200]
+    ],
+    "_tunnel_note": "Şehreküstü–Demirtaşpaşa yeraltı bölümü (lat, lon, yarıçap_m)",
     "source": "YAKLAŞIK / SENTETİK koordinatlar — PoC için. Gerçek veri Burulaş'tan çekilecek.",
     "stops": [
       "Emek", "Kültürpark", "Sırameşeler", "Şehreküstü",

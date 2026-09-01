@@ -14,6 +14,9 @@ from .core.geo import Point
 ROUTES_DIR = Path(__file__).parent / "data" / "routes"
 
 
+TunnelZone = tuple[float, float, float]  # (lat, lon, yarıçap_m)
+
+
 @dataclass(frozen=True)
 class Route:
     id: str
@@ -21,22 +24,17 @@ class Route:
     mode: str                       # "bus" | "metro"
     avg_speed_kmh: float
     direction_labels: dict[str, str]
-    tunnel_segments: list[tuple[int, int]]
+    tunnel_zones: list[TunnelZone]   # coğrafi; yöne bağlı değil
     coords: list[Point]             # (lat, lon), forward yön
     stops: list[str]
 
-    def path(self, direction: str) -> tuple[list[Point], list[tuple[int, int]]]:
-        """direction: 'forward' | 'backward'. Backward'da koordinatları ve
-        tünel indekslerini ters çevirir."""
+    def path(self, direction: str) -> tuple[list[Point], list[TunnelZone]]:
+        """direction: 'forward' | 'backward'. Tünel bölgeleri coğrafi olduğu
+        için yönle değişmez; sadece koordinatlar ters çevrilir."""
         if direction not in ("forward", "backward"):
             raise ValueError("direction 'forward' ya da 'backward' olmalı")
-        if direction == "forward":
-            return self.coords, self.tunnel_segments
-        rev = list(reversed(self.coords))
-        n_seg = len(self.coords) - 1
-        # forward segment i (nokta i->i+1), backward'da segment (n_seg-1-i)
-        rev_tun = [(n_seg - 1 - hi, n_seg - 1 - lo) for lo, hi in self.tunnel_segments]
-        return rev, rev_tun
+        coords = self.coords if direction == "forward" else list(reversed(self.coords))
+        return coords, self.tunnel_zones
 
 
 def _load_one(fp: Path) -> Route:
@@ -52,7 +50,7 @@ def _load_one(fp: Path) -> Route:
         direction_labels=props.get(
             "direction_labels", {"forward": "Gidiş", "backward": "Dönüş"}
         ),
-        tunnel_segments=[tuple(x) for x in props.get("tunnel_segments", [])],
+        tunnel_zones=[tuple(z) for z in props.get("tunnel_zones", [])],
         coords=coords,
         stops=props.get("stops", []),
     )

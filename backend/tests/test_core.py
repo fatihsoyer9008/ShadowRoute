@@ -6,7 +6,14 @@ from datetime import datetime
 
 import pytest
 
-from app.core.geo import haversine_m, initial_bearing_deg, normalize_180
+from app.core.geo import (
+    haversine_m,
+    initial_bearing_deg,
+    normalize_180,
+    rdp_simplify,
+    resample_polyline,
+    smooth_route,
+)
 from app.core.shadow import Side, _classify, analyze
 from app.core.sun import TURKEY_TZ, SunPosition, get_sun
 
@@ -95,12 +102,51 @@ def test_analyze_eastbound_evening_recommends_left():
     assert res.recommended_side in (Side.LEFT, Side.RIGHT, Side.NONE)
 
 
-def test_analyze_marks_tunnel_segments_none():
+def test_analyze_marks_tunnel_zone_none():
     coords = [(40.22, 28.95), (40.21, 29.00), (40.20, 29.02), (40.19, 29.05)]
     dep = datetime(2026, 6, 21, 12, 0, tzinfo=TURKEY_TZ)
-    res = analyze(coords, dep, avg_speed_kmh=30, tunnel_segments=[(1, 1)])
-    assert res.segments[1].in_tunnel
-    assert res.segments[1].side is Side.NONE
+    # (40.205, 29.01) çevresi 800 m -> ikinci segmentin ortası bu dairede.
+    res = analyze(coords, dep, avg_speed_kmh=30,
+                  tunnel_zones=[(40.205, 29.01, 800.0)], resample_step_m=None)
+    tunnel = [s for s in res.segments if s.in_tunnel]
+    assert tunnel, "tünel bölgesindeki en az bir segment işaretlenmeli"
+    assert all(s.side is Side.NONE for s in tunnel)
+    # Daireden uzak segmentler etkilenmemeli.
+    assert any(not s.in_tunnel for s in res.segments)
+
+
+# --- polyline yumuşatma ------------------------------------------------
+def test_rdp_drops_collinear_points():
+    line = [(0.0, 0.0), (0.0, 0.5), (0.0, 1.0), (0.0, 1.5)]
+    assert rdp_simplify(line, 10.0) == [(0.0, 0.0), (0.0, 1.5)]
+
+
+def test_rdp_keeps_real_corner():
+    corner = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+    assert rdp_simplify(corner, 10.0) == corner
+
+
+def test_rdp_removes_jitter_spike():
+    # Düz doğu hattı + ortada ~5 m'lik kuzey sıçraması -> RDP atmalı.
+    jitter = [(40.19, 29.00), (40.190045, 29.005), (40.19, 29.01)]
+    out = rdp_simplify(jitter, 25.0)
+    assert out == [(40.19, 29.00), (40.19, 29.01)]
+
+
+def test_resample_uniform_spacing():
+    pts = resample_polyline([(40.19, 29.00), (40.19, 29.02)], 50.0)
+    gaps = [haversine_m(a, b) for a, b in zip(pts, pts[1:])]
+    assert max(gaps) <= 55.0
+    assert pts[0] == (40.19, 29.00) and pts[-1] == (40.19, 29.02)
+
+
+def test_smooth_route_denoises_but_keeps_shape():
+    raw = [(40.19, 29.00), (40.1901, 29.0009), (40.19, 29.002),
+           (40.1899, 29.0031), (40.19, 29.004)]
+    out = smooth_route(raw, simplify_epsilon_m=25.0, resample_step_m=40.0)
+    assert len(out) < 60
+    assert haversine_m(out[0], raw[0]) < 1.0
+    assert haversine_m(out[-1], raw[-1]) < 1.0
 
 
 def test_analyze_all_night_is_no_preference():

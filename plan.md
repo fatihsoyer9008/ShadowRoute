@@ -40,10 +40,10 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
   - Cevap alan adı `logitude` (API tarafında typo, kodda ele alındı)
   - İstemci: `app/burulas.py`, canlı demo: `python -m scripts.fetch_route M1`
 - [x] Plan B hâlâ geçerli: `routes_repo` statik GeoJSON'a düşebiliyor
-- **Bulgu:** ham polyline çok gürültülü (512 nokta / dönüş, sapaklar + rotari
-  gürültüsü). Segment yön açıları zıplıyor → sol/sağ ~50/50 çıkabiliyor.
-  Faz 2'de **polyline yeniden örnekleme / yumuşatma** şart (örn. 30–50 m eşit
-  aralık + Douglas–Peucker), ya da kısa segmentleri birleştir.
+- **Bulgu:** ham polyline gürültülü (512 nokta/dönüş). RDP + yeniden örnekleme
+  eklendi (`geo.smooth_route`, Faz 2). Not: çok dönen hatlarda (38 kampüs turu)
+  sol/sağ ~%50/50 çıkması **normal** — o hatta net gölge tarafı yok; metro
+  hatları net sonuç veriyor.
 
 ### Faz 1 — Çekirdek algoritma (Backend)  ✅ PoC HAZIR
 - [x] `geo.py` — bearing + haversine
@@ -60,9 +60,11 @@ Arama ekranı ve koltuk illüstrasyonları → ikinci adım.
 ### Faz 2 — Burulaş entegrasyonu
 - [x] `app/burulas.py` — API istemcisi (search / routecoordinate / routestat)
 - [x] `scripts/fetch_route.py` — canlı çek + analiz + `--save` ile GeoJSON yaz
-- [ ] **Polyline yumuşatma/yeniden örnekleme** (Faz 0 bulgusu — öncelikli)
+- [x] **Polyline yumuşatma** — `geo.smooth_route` (Douglas–Peucker + yeniden
+      örnekleme), `analyze()` içine gömülü
+- [x] Tünel gösterimi coğrafi bölgeye çevrildi (`tunnel_zones`, yön-bağımsız)
+- [ ] Tünel bölgelerini gerçek BursaRay (M1/M2) güzergahına göre ayarla
 - [ ] Basit cache (dosya/SQLite/Redis) — rotalar nadiren değişir
-- [ ] Tünel segmentlerini gerçek BursaRay (M1/M2) güzergahına işaretle
 - [ ] API çökerse statik GeoJSON'a otomatik fallback (routes_repo ile birleştir)
 
 ### Faz 3 — Mobil (Flutter)  🚧 MVP iskeleti hazır (`mobile/`)
